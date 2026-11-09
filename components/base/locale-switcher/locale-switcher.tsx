@@ -16,15 +16,18 @@ export function LocaleSwitcher({ className }: { className?: string }) {
 
     function switchLocale(next: AppLocale) {
         if (next === locale) return;
+        // Keep query string (e.g. ?registered=1) across locale changes.
+        const query = typeof window !== "undefined" ? window.location.search.replace(/^\?/, "") : "";
+        const href = query ? `${pathname}?${query}` : pathname;
         startTransition(() => {
-            router.replace(pathname, { locale: next });
+            router.replace(href, { locale: next });
         });
     }
 
     return (
         <div
             className={cx(
-                "inline-flex w-full items-center gap-1 rounded-lg bg-secondary p-1 ring-1 ring-secondary",
+                "inline-flex h-10 items-center gap-0.5 rounded-lg bg-secondary p-0.5 ring-1 ring-secondary",
                 className,
             )}
             aria-label={t("label")}
@@ -36,7 +39,7 @@ export function LocaleSwitcher({ className }: { className?: string }) {
                         key={item}
                         size="sm"
                         color={active ? "primary" : "tertiary"}
-                        className="min-w-0 flex-1 justify-center"
+                        className="h-full min-w-0 flex-1 justify-center rounded-md px-2.5 py-0"
                         isDisabled={isPending}
                         onPress={() => switchLocale(item)}
                         aria-pressed={active}

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { getMessages, setRequestLocale } from "next-intl/server";
 import { DocumentLocale } from "@/components/base/document-locale/document-locale";
+import { AriaLocaleProvider } from "@/providers/aria-locale-provider";
 import { LocaleApiSync } from "@/providers/locale-api-sync";
 import { routing } from "@/i18n/routing";
 
@@ -29,9 +30,11 @@ export default async function LocaleLayout({ children, params }: Props) {
 
     return (
         <NextIntlClientProvider locale={locale} messages={messages}>
-            <DocumentLocale locale={locale} />
-            <LocaleApiSync />
-            {children}
+            <AriaLocaleProvider>
+                <DocumentLocale locale={locale} />
+                <LocaleApiSync />
+                {children}
+            </AriaLocaleProvider>
         </NextIntlClientProvider>
     );
 }

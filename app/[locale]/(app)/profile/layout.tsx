@@ -1,12 +1,14 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Monitor01, User01 } from "@untitledui/icons";
+import { CreditCard01, Monitor01, Settings01, User01 } from "@untitledui/icons";
 import { Link, usePathname } from "@/i18n/navigation";
 import { cx } from "@/utils/cx";
 
 const tabs = [
     { href: "/profile" as const, labelKey: "overview" as const, icon: User01, exact: true },
+    { href: "/profile/settings" as const, labelKey: "settings" as const, icon: Settings01, exact: false },
+    { href: "/profile/billing" as const, labelKey: "billing" as const, icon: CreditCard01, exact: false },
     { href: "/profile/devices" as const, labelKey: "devices" as const, icon: Monitor01, exact: false },
 ];
 
@@ -28,7 +30,14 @@ export default function ProfileLayout({ children }: { children: React.ReactNode 
                     const active = tab.exact
                         ? pathname === tab.href
                         : pathname === tab.href || pathname.startsWith(`${tab.href}/`);
-                    const label = tab.labelKey === "devices" ? tNav("devices") : t("overview");
+                    const label =
+                        tab.labelKey === "devices"
+                            ? tNav("devices")
+                            : tab.labelKey === "billing"
+                              ? tNav("billing")
+                              : tab.labelKey === "settings"
+                                ? t("settings")
+                                : t("overview");
 
                     return (
                         <Link

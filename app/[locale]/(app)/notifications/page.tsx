@@ -10,6 +10,7 @@ import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-ic
 import { adminApi, authApi, toApiError } from "@/lib/api";
 import { formatDate } from "@/lib/date";
 import { notify } from "@/lib/notify";
+import { Permission } from "@/lib/permissions";
 import { queryKeys } from "@/lib/query-keys";
 import type { AppNotification } from "@/lib/types";
 import { useAuth } from "@/providers/auth-provider";
@@ -22,6 +23,7 @@ function notificationTone(type: string): "brand" | "success" | "error" | "gray" 
         case "export_failed":
             return "error";
         case "export_queued":
+        case "reminder_due":
             return "brand";
         default:
             return "gray";
@@ -34,6 +36,8 @@ function notificationIcon(type: string) {
             return CheckCircle;
         case "export_failed":
             return AlertCircle;
+        case "reminder_due":
+            return Bell01;
         default:
             return InfoCircle;
     }
@@ -42,7 +46,8 @@ function notificationIcon(type: string) {
 export default function NotificationsPage() {
     const locale = useLocale();
     const t = useTranslations("notifications");
-    const { isAdmin } = useAuth();
+    const { hasPermission } = useAuth();
+    const canDownloadExport = hasPermission(Permission.UsersExport);
     const queryClient = useQueryClient();
 
     const listQuery = useQuery({
@@ -112,7 +117,7 @@ export default function NotificationsPage() {
     });
 
     const titleFor = (item: AppNotification) => {
-        if (item.type === "export_queued" || item.type === "export_ready" || item.type === "export_failed") {
+        if (item.type === "export_queued" || item.type === "export_ready" || item.type === "export_failed" || item.type === "reminder_due") {
             return t(`types.${item.type}.title`);
         }
         return t("types.unknown.title");
@@ -128,6 +133,11 @@ export default function NotificationsPage() {
             return t("types.export_failed.description", {
                 error: (item.meta.error_message as string) || "—",
             });
+        }
+        if (item.type === "reminder_due") {
+            return typeof item.meta.title === "string" && item.meta.title
+                ? t("types.reminder_due.description", { title: item.meta.title })
+                : t("types.reminder_due.descriptionFallback");
         }
         if (item.type === "export_queued") {
             return t("types.export_queued.description");
@@ -186,7 +196,8 @@ export default function NotificationsPage() {
                         const unread = !item.read_at;
                         const tone = notificationTone(item.type);
                         const Icon = notificationIcon(item.type);
-                        const canDownload = isAdmin && item.type === "export_ready" && Boolean(item.ref_id);
+                        const canDownload =
+                            canDownloadExport && item.type === "export_ready" && Boolean(item.ref_id);
 
                         return (
                             <li

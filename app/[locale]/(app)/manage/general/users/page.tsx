@@ -6,29 +6,37 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
 import { DialogTrigger, Heading, Popover, type SortDescriptor } from "react-aria-components";
+import { parseDate } from "@internationalized/date";
+import type { DateValue } from "react-aria-components";
 import {
     CheckVerified01,
+    ChevronDown,
+    CreditCard01,
+    DotsVertical,
     Download01,
     Edit01,
     FilterLines,
     Key01,
     LogOut01,
     Mail01,
+    Plus,
     RefreshCcw01,
     SearchLg,
     Trash01,
-    UserPlus01,
+    Users01,
 } from "@untitledui/icons";
+import { DateRangePicker } from "@/components/application/date-picker/date-range-picker";
+import { EmptyState } from "@/components/application/empty-state/empty-state";
 import { Table, TableCard } from "@/components/application/table/table";
 import { LoadingIndicator } from "@/components/application/loading-indicator/loading-indicator";
-import { PaginationCardAdvanced } from "@/components/application/pagination/pagination";
+import { PaginationCardMinimal } from "@/components/application/pagination/pagination";
 import { Dialog, Modal, ModalOverlay, MODAL_EXIT_MS } from "@/components/application/modals/modal";
-import { Badge } from "@/components/base/badges/badges";
+import { Badge, BadgeWithDot } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Dropdown } from "@/components/base/dropdown/dropdown";
 import { Input } from "@/components/base/input/input";
-import { NativeSelect } from "@/components/base/select/select-native";
+import { Select } from "@/components/base/select/select";
 import { adminApi } from "@/lib/api";
 import { formatDate } from "@/lib/date";
 import { notify } from "@/lib/notify";
@@ -41,10 +49,30 @@ import {
     type AdminSearchInput,
     type AdminUserInput,
 } from "@/lib/schemas";
-import type { User } from "@/lib/types";
+import { Permission } from "@/lib/permissions";
+import type { BillingPlanCode, User } from "@/lib/types";
 import { useRequireAuth } from "@/providers/auth-provider";
 import type { FC } from "react";
 import { cx } from "@/utils/cx";
+
+function roleBadgeColor(role: string): "brand" | "success" | "gray" {
+    switch (role.toLowerCase()) {
+        case "admin":
+            return "brand";
+        case "moderator":
+            return "success";
+        default:
+            return "gray";
+    }
+}
+
+function planBadgeColor(plan: string): "brand" | "gray" {
+    return plan.toLowerCase() === "pro" ? "brand" : "gray";
+}
+
+function planLabel(plan: string | undefined, t: (key: "planFree" | "planPro") => string) {
+    return plan?.toLowerCase() === "pro" ? t("planPro") : t("planFree");
+}
 
 type AdminFilters = {
     role: string;
@@ -75,13 +103,16 @@ function countActiveFilters(filters: AdminFilters) {
 }
 
 type ConfirmAction = "kick" | "delete" | "restore" | "verifyEmail" | "sendReset";
-type ActionKey = ConfirmAction | "setPassword" | "edit";
+type ActionKey = ConfirmAction | "setPassword" | "edit" | "setPlan";
 
 type DialogState =
     | { type: "none" }
+    | { type: "plan"; user: User }
     | { type: "confirm"; action: ConfirmAction; user: User }
     | { type: "reset"; user: User }
-    | { type: "form"; mode: "create" | "edit"; user?: User };
+    | { type: "confirmReset"; user: User; values: AdminResetPasswordInput }
+    | { type: "form"; mode: "create" | "edit"; user?: User }
+    | { type: "confirmForm"; mode: "create" | "edit"; user?: User; values: AdminUserInput };
 
 type UserAction = {
     id: ActionKey;
@@ -91,28 +122,42 @@ type UserAction = {
 
 const VISIBLE_ACTION_LIMIT = 2;
 
-function getUserActions(user: User, currentUserId: string | undefined, t: (key: string) => string): UserAction[] {
+function getUserActions(
+    user: User,
+    currentUserId: string | undefined,
+    t: (key: string) => string,
+    can: (permission: string) => boolean,
+): UserAction[] {
     const isSelf = user.id === currentUserId;
     const isDeleted = Boolean(user.deleted_at);
     const verified = Boolean(user.email_verified_at);
 
     if (isDeleted) {
-        if (isSelf) return [];
+        if (isSelf || !can(Permission.UsersRestore)) return [];
         return [{ id: "restore", label: t("restore"), icon: RefreshCcw01 }];
     }
 
-    const actions: UserAction[] = [{ id: "edit", label: t("edit"), icon: Edit01 }];
+    const actions: UserAction[] = [];
 
-    actions.push({ id: "sendReset", label: t("sendReset"), icon: Mail01 });
-
-    if (!isSelf) {
-        actions.push({ id: "setPassword", label: t("setPassword"), icon: Key01 });
+    if (can(Permission.UsersUpdate)) {
+        actions.push({ id: "edit", label: t("edit"), icon: Edit01 });
     }
-    if (!verified) {
+    if (can(Permission.UsersResetPassword)) {
+        actions.push({ id: "sendReset", label: t("sendReset"), icon: Mail01 });
+        if (!isSelf) {
+            actions.push({ id: "setPassword", label: t("setPassword"), icon: Key01 });
+        }
+    }
+    if (!verified && can(Permission.UsersVerifyEmail)) {
         actions.push({ id: "verifyEmail", label: t("verifyEmail"), icon: CheckVerified01 });
     }
-    if (!isSelf) {
+    if (can(Permission.UsersUpdate)) {
+        actions.push({ id: "setPlan", label: t("setPlan"), icon: CreditCard01 });
+    }
+    if (!isSelf && can(Permission.UsersKick)) {
         actions.push({ id: "kick", label: t("kick"), icon: LogOut01 });
+    }
+    if (!isSelf && can(Permission.UsersDelete)) {
         actions.push({ id: "delete", label: t("delete"), icon: Trash01 });
     }
 
@@ -120,18 +165,20 @@ function getUserActions(user: User, currentUserId: string | undefined, t: (key: 
 }
 
 export default function UserAccountsPage() {
-    const auth = useRequireAuth({ admin: true });
+    const auth = useRequireAuth({ permission: Permission.UsersRead });
     const locale = useLocale();
     const t = useTranslations("admin");
     const tCommon = useTranslations("common");
     const tValidation = useTranslations();
     const queryClient = useQueryClient();
+    const can = auth.hasPermission;
 
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const [appliedSearch, setAppliedSearch] = useState("");
     const [appliedFilters, setAppliedFilters] = useState<AdminFilters>(emptyFilters);
     const [draftFilters, setDraftFilters] = useState<AdminFilters>(emptyFilters);
+    const [dateRange, setDateRange] = useState<{ start: DateValue; end: DateValue } | null>(null);
     const [filterOpen, setFilterOpen] = useState(false);
     const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
         column: "created_at",
@@ -141,6 +188,7 @@ export default function UserAccountsPage() {
     const sortBy = String(sortDescriptor.column ?? "created_at");
     const sortDir = sortDescriptor.direction === "ascending" ? "asc" : "desc";
     const [dialog, setDialog] = useState<DialogState>({ type: "none" });
+    const [planChoice, setPlanChoice] = useState<BillingPlanCode>("free");
     const [modalOpen, setModalOpen] = useState(false);
     const closeDialogTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -174,7 +222,7 @@ export default function UserAccountsPage() {
         resolver: zodResolver(userSchema),
         mode: "onSubmit",
         reValidateMode: "onChange",
-        defaultValues: { username: "", email: "" },
+        defaultValues: { username: "", email: "", role_id: "" },
     });
 
     const usersQuery = useQuery({
@@ -202,6 +250,29 @@ export default function UserAccountsPage() {
                 sort_dir: sortDir,
             }),
     });
+
+    const rolesQuery = useQuery({
+        queryKey: queryKeys.adminRoles,
+        queryFn: async () => {
+            const res = await adminApi.roles();
+            return res.data ?? [];
+        },
+        enabled: can(Permission.UsersRead) || can(Permission.UsersCreate) || can(Permission.UsersUpdate),
+    });
+
+    const roleOptions = useMemo(
+        () =>
+            (rolesQuery.data ?? []).map((role) => ({
+                id: role.id,
+                label: role.name,
+            })),
+        [rolesQuery.data],
+    );
+
+    const defaultRoleId = useMemo(() => {
+        const userRole = (rolesQuery.data ?? []).find((role) => role.name.toLowerCase() === "user");
+        return userRole?.id ?? roleOptions[0]?.id ?? "";
+    }, [rolesQuery.data, roleOptions]);
 
     const invalidateUsers = async () => {
         await queryClient.invalidateQueries({ queryKey: ["admin"] });
@@ -305,9 +376,9 @@ export default function UserAccountsPage() {
     });
 
     const resetMutation = useMutation({
-        mutationFn: async (values: AdminResetPasswordInput) => {
-            if (dialog.type !== "reset") throw new Error("invalid dialog");
-            return adminApi.resetPassword(dialog.user.id, values.password);
+        mutationFn: async () => {
+            if (dialog.type !== "confirmReset") throw new Error("invalid dialog");
+            return adminApi.resetPassword(dialog.user.id, dialog.values.password);
         },
         onSuccess: async (res) => {
             notify.success(res.message || t("actionSuccess"));
@@ -318,22 +389,34 @@ export default function UserAccountsPage() {
     });
 
     const userMutation = useMutation({
-        mutationFn: async (values: AdminUserInput) => {
-            if (dialog.type !== "form") throw new Error("invalid dialog");
+        mutationFn: async () => {
+            if (dialog.type !== "confirmForm") throw new Error("invalid dialog");
             if (dialog.mode === "create") {
-                return adminApi.createUser(values);
+                return adminApi.createUser(dialog.values);
             }
             if (!dialog.user) throw new Error("missing user");
-            return adminApi.updateUser(dialog.user.id, {
-                ...values,
-                role: dialog.user.role === "admin" ? "admin" : "user",
-            });
+            return adminApi.updateUser(dialog.user.id, dialog.values);
         },
         onSuccess: async (res) => {
             notify.success(res.message || t("actionSuccess"));
-            userForm.reset({ username: "", email: "" });
+            userForm.reset({ username: "", email: "", role_id: defaultRoleId });
             closeDialog(true);
             await invalidateUsers();
+        },
+    });
+
+    const planMutation = useMutation({
+        mutationFn: async () => {
+            if (dialog.type !== "plan") throw new Error("invalid dialog");
+            return adminApi.updateUserSubscription(dialog.user.id, { plan_code: planChoice });
+        },
+        onSuccess: async (res) => {
+            notify.success(res.message || t("actionSuccess"));
+            closeDialog(true);
+            await Promise.all([
+                queryClient.invalidateQueries({ queryKey: ["billing"] }),
+                invalidateUsers(),
+            ]);
         },
     });
 
@@ -353,8 +436,17 @@ export default function UserAccountsPage() {
         setAppliedSearch("");
         setAppliedFilters(emptyFilters);
         setDraftFilters(emptyFilters);
+        setDateRange(null);
         resetSearchForm({ search: "" });
         setFilterOpen(false);
+    };
+
+    const applyDateRange = () => {
+        setPage(1);
+        const created_from = dateRange?.start.toString() ?? "";
+        const created_to = dateRange?.end.toString() ?? "";
+        setAppliedFilters((prev) => ({ ...prev, created_from, created_to }));
+        setDraftFilters((prev) => ({ ...prev, created_from, created_to }));
     };
 
     const openDialog = (next: Exclude<DialogState, { type: "none" }>) => {
@@ -376,20 +468,29 @@ export default function UserAccountsPage() {
     };
 
     const openCreate = () => {
-        userForm.reset({ username: "", email: "" });
+        userForm.reset({ username: "", email: "", role_id: defaultRoleId });
         openDialog({ type: "form", mode: "create" });
+    };
+
+    const openPlan = (user: User) => {
+        setPlanChoice(user.plan_code === "pro" ? "pro" : "free");
+        openDialog({ type: "plan", user });
     };
 
     const openEdit = (user: User) => {
         userForm.reset({
             username: user.username,
             email: user.email,
+            role_id: user.role_id || defaultRoleId,
         });
         openDialog({ type: "form", mode: "edit", user });
     };
 
     const closeDialog = (force = false) => {
-        if (!force && (actionMutation.isPending || resetMutation.isPending || userMutation.isPending)) {
+        if (
+            !force
+            && (actionMutation.isPending || resetMutation.isPending || userMutation.isPending || planMutation.isPending)
+        ) {
             return;
         }
         setModalOpen(false);
@@ -418,6 +519,16 @@ export default function UserAccountsPage() {
         }
     })();
 
+    const backToForm = () => {
+        if (dialog.type === "confirmForm") {
+            openDialog({ type: "form", mode: dialog.mode, user: dialog.user });
+            return;
+        }
+        if (dialog.type === "confirmReset") {
+            openDialog({ type: "reset", user: dialog.user });
+        }
+    };
+
     const users = usersQuery.data?.data ?? [];
     const totalPages = usersQuery.data?.meta.totalPages || 1;
     const total = usersQuery.data?.meta.total || 0;
@@ -425,370 +536,458 @@ export default function UserAccountsPage() {
     const currentUserId = auth.user?.id;
 
     return (
-        <div className="space-y-6">
-            <div>
-                <h1 className="text-display-xs font-semibold text-primary">{t("title")}</h1>
-                <p className="mt-1 text-md text-tertiary">{t("subtitle")}</p>
-            </div>
-
-            <form className="flex flex-col gap-3 sm:flex-row sm:items-center" onSubmit={onSearch}>
-                <Controller
-                    name="search"
-                    control={control}
-                    render={({ field }) => (
-                        <Input
-                            {...field}
-                            aria-label={t("searchPlaceholder")}
-                            placeholder={t("searchPlaceholder")}
-                            icon={SearchLg}
-                            className="min-w-0 flex-1"
-                        />
-                    )}
-                />
-
-                <ButtonUtility
-                    type="button"
-                    size="sm"
-                    color="secondary"
-                    className="size-10 shrink-0"
-                    icon={
-                        <RefreshCcw01
-                            data-icon
-                            className={
-                                usersQuery.isFetching && !usersQuery.isLoading ? "animate-spin" : undefined
-                            }
-                        />
-                    }
-                    tooltip={tCommon("refresh")}
-                    isDisabled={usersQuery.isFetching && !usersQuery.isLoading}
-                    onPress={() => {
-                        void usersQuery.refetch();
-                    }}
-                />
-
-                <DialogTrigger
-                    isOpen={filterOpen}
-                    onOpenChange={(open) => {
-                        setFilterOpen(open);
-                        if (open) setDraftFilters(appliedFilters);
-                    }}
-                >
-                    <Button
-                        type="button"
-                        color="secondary"
-                        iconLeading={FilterLines}
-                        className={cx(activeFilterCount > 0 && "ring-2 ring-brand")}
-                    >
-                        {activeFilterCount > 0 ? `${t("filters")} (${activeFilterCount})` : t("filters")}
-                    </Button>
-                    <Popover
-                        placement="bottom end"
-                        offset={8}
-                        className={({ isEntering, isExiting }) =>
-                            cx(
-                                "w-[min(100vw-2rem,24rem)] origin-(--trigger-anchor-point) overflow-auto rounded-xl bg-primary p-4 shadow-lg ring-1 ring-secondary_alt outline-hidden",
-                                isEntering &&
-                                    "duration-150 ease-out animate-in fade-in placement-bottom:slide-in-from-top-0.5",
-                                isExiting &&
-                                    "duration-100 ease-in animate-out fade-out placement-bottom:slide-out-to-top-0.5",
-                            )
-                        }
-                    >
-                        <Dialog className="outline-hidden">
-                            <div className="space-y-3">
-                                <Heading slot="title" className="text-sm font-semibold text-primary">
-                                    {t("filters")}
-                                </Heading>
-                                <div className="grid gap-3 sm:grid-cols-2">
-                                    <NativeSelect
-                                        size="sm"
-                                        label={t("filterRole")}
-                                        value={draftFilters.role}
-                                        onChange={(e) => updateDraftFilter("role", e.target.value)}
-                                        options={[
-                                            { label: t("filterAll"), value: "" },
-                                            { label: t("roleUser"), value: "user" },
-                                            { label: t("roleAdmin"), value: "admin" },
-                                        ]}
-                                    />
-                                    <NativeSelect
-                                        size="sm"
-                                        label={t("filterProvider")}
-                                        value={draftFilters.auth_provider}
-                                        onChange={(e) => updateDraftFilter("auth_provider", e.target.value)}
-                                        options={[
-                                            { label: t("filterAll"), value: "" },
-                                            { label: t("providerLocal"), value: "local" },
-                                            { label: t("providerDiscord"), value: "discord" },
-                                        ]}
-                                    />
-                                    <NativeSelect
-                                        size="sm"
-                                        label={t("filterStatus")}
-                                        value={draftFilters.deleted_status}
-                                        onChange={(e) => updateDraftFilter("deleted_status", e.target.value)}
-                                        options={[
-                                            { label: t("statusActive"), value: "active" },
-                                            { label: t("statusDeleted"), value: "deleted" },
-                                            { label: t("statusAll"), value: "all" },
-                                        ]}
-                                    />
-                                    <Input
-                                        type="date"
-                                        size="sm"
-                                        label={t("filterCreatedFrom")}
-                                        value={draftFilters.created_from}
-                                        onChange={(value) => updateDraftFilter("created_from", value)}
-                                    />
-                                    <Input
-                                        type="date"
-                                        size="sm"
-                                        label={t("filterCreatedTo")}
-                                        value={draftFilters.created_to}
-                                        onChange={(value) => updateDraftFilter("created_to", value)}
-                                    />
-                                    <Input
-                                        type="date"
-                                        size="sm"
-                                        label={t("filterUpdatedFrom")}
-                                        value={draftFilters.updated_from}
-                                        onChange={(value) => updateDraftFilter("updated_from", value)}
-                                    />
-                                    <Input
-                                        type="date"
-                                        size="sm"
-                                        label={t("filterUpdatedTo")}
-                                        value={draftFilters.updated_to}
-                                        onChange={(value) => updateDraftFilter("updated_to", value)}
-                                    />
-                                </div>
-                                <div className="flex justify-between gap-2 pt-1">
-                                    <Button type="button" color="link-gray" size="sm" onPress={clearFilters}>
-                                        {t("filterClear")}
-                                    </Button>
-                                    <Button type="button" size="sm" onPress={() => applySearch()}>
-                                        {tCommon("search")}
-                                    </Button>
-                                </div>
-                            </div>
-                        </Dialog>
-                    </Popover>
-                </DialogTrigger>
-
-                <Button type="submit" color="primary">
-                    {tCommon("search")}
-                </Button>
-
-                <Button
-                    type="button"
-                    color="secondary"
-                    iconLeading={Download01}
-                    isLoading={exportMutation.isPending}
-                    onPress={() => exportMutation.mutate()}
-                >
-                    {t("exportCsv")}
-                </Button>
-
-                <Button type="button" color="secondary" iconLeading={UserPlus01} onPress={openCreate}>
-                    {t("addUser")}
-                </Button>
-            </form>
-
-            {loading ? (
-                <div className="flex justify-center py-16">
-                    <LoadingIndicator size="md" label={t("loading")} />
-                </div>
-            ) : (
-                <TableCard.Root>
-                    <TableCard.Header title={t("tableTitle")} badge={`${total}`} description={t("tableDescription")} />
-                    {users.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center gap-1 px-6 py-16 text-center">
-                            <p className="text-md font-semibold text-primary">{t("emptyTitle")}</p>
-                            <p className="text-sm text-tertiary">
-                                {appliedSearch
-                                    ? t("emptySearchDescription", { query: appliedSearch })
-                                    : t("emptyDescription")}
-                            </p>
+        <div className="flex min-h-[calc(100dvh-8rem)] flex-col">
+            <TableCard.Root className="flex flex-1 flex-col">
+                <TableCard.Header
+                    title={t("users")}
+                    badge={`${total}`}
+                    description={t("tableDescription")}
+                    contentTrailing={
+                        <div className="flex items-center gap-3">
+                            {can(Permission.UsersExport) ? (
+                                <Button
+                                    color="secondary"
+                                    size="sm"
+                                    iconLeading={Download01}
+                                    isLoading={exportMutation.isPending}
+                                    onPress={() => exportMutation.mutate()}
+                                >
+                                    {t("exportCsv")}
+                                </Button>
+                            ) : null}
+                            {can(Permission.UsersCreate) ? (
+                                <Button size="sm" iconLeading={Plus} onPress={openCreate}>
+                                    {t("addUser")}
+                                </Button>
+                            ) : null}
+                            <Dropdown.Root>
+                                <Button
+                                    color="secondary"
+                                    size="sm"
+                                    iconLeading={DotsVertical}
+                                    aria-label={t("actionMenu")}
+                                />
+                                <Dropdown.Popover className="w-min">
+                                    <Dropdown.Menu
+                                        onAction={(key) => {
+                                            if (key === "refresh") void usersQuery.refetch();
+                                        }}
+                                    >
+                                        <Dropdown.Item
+                                            id="refresh"
+                                            icon={RefreshCcw01}
+                                            label={tCommon("refresh")}
+                                        />
+                                    </Dropdown.Menu>
+                                </Dropdown.Popover>
+                            </Dropdown.Root>
                         </div>
-                    ) : (
-                        <>
-                            <Table
-                                aria-label={t("tableTitle")}
-                                sortDescriptor={sortDescriptor}
-                                onSortChange={(next) => {
-                                    setPage(1);
-                                    setSortDescriptor(next);
-                                }}
+                    }
+                />
+
+                <form
+                    className="flex flex-wrap gap-3 border-b border-secondary px-4 py-3 md:px-6"
+                    onSubmit={onSearch}
+                >
+                    <div className="flex min-w-0 flex-1 flex-wrap gap-3">
+                        <Controller
+                            name="search"
+                            control={control}
+                            render={({ field }) => (
+                                <Input
+                                    {...field}
+                                    shortcut
+                                    size="sm"
+                                    aria-label={t("searchPlaceholder")}
+                                    placeholder={tCommon("search")}
+                                    icon={SearchLg}
+                                    className="min-w-0 w-full flex-1"
+                                />
+                            )}
+                        />
+                    </div>
+                    <div className="flex shrink-0 items-center gap-3">
+                        <DateRangePicker
+                            aria-label={t("selectDates")}
+                            placeholder={t("selectDates")}
+                            size="sm"
+                            className="max-md:hidden"
+                            value={dateRange}
+                            onChange={setDateRange}
+                            onApply={applyDateRange}
+                            onCancel={() => {
+                                if (appliedFilters.created_from && appliedFilters.created_to) {
+                                    try {
+                                        setDateRange({
+                                            start: parseDate(appliedFilters.created_from),
+                                            end: parseDate(appliedFilters.created_to),
+                                        });
+                                    } catch {
+                                        setDateRange(null);
+                                    }
+                                } else {
+                                    setDateRange(null);
+                                }
+                            }}
+                        />
+                        <DialogTrigger
+                            isOpen={filterOpen}
+                            onOpenChange={(open) => {
+                                setFilterOpen(open);
+                                if (open) setDraftFilters(appliedFilters);
+                            }}
+                        >
+                            <Button
+                                type="button"
+                                color="secondary"
+                                size="sm"
+                                iconLeading={FilterLines}
+                                iconTrailing={ChevronDown}
+                                className={cx(activeFilterCount > 0 && "ring-2 ring-brand")}
                             >
-                                <Table.Header>
-                                    <Table.Head id="username" isRowHeader allowsSorting>
-                                        {t("user")}
-                                    </Table.Head>
-                                    <Table.Head id="role" allowsSorting>
-                                        {t("role")}
-                                    </Table.Head>
-                                    <Table.Head id="auth_provider" allowsSorting>
-                                        {t("provider")}
-                                    </Table.Head>
-                                    <Table.Head id="email_verified_at" allowsSorting>
-                                        {t("emailStatus")}
-                                    </Table.Head>
-                                    <Table.Head id="created_at" allowsSorting>
-                                        {t("created")}
-                                    </Table.Head>
-                                    <Table.Head id="updated_at" allowsSorting>
-                                        {t("updated")}
-                                    </Table.Head>
-                                    <Table.Head className="text-center [&>div]:justify-center">{t("actions")}</Table.Head>
-                                </Table.Header>
-                                <Table.Body items={users}>
-                                    {(user) => {
-                                        const isSelf = user.id === currentUserId;
-                                        const verified = Boolean(user.email_verified_at);
-                                        const actions = getUserActions(user, currentUserId, t);
-                                        const visibleActions = actions.slice(0, VISIBLE_ACTION_LIMIT);
-                                        const overflowActions = actions.slice(VISIBLE_ACTION_LIMIT);
+                                {activeFilterCount > 0 ? `${t("filters")} (${activeFilterCount})` : t("filters")}
+                            </Button>
+                            <Popover
+                                placement="bottom end"
+                                offset={8}
+                                className={({ isEntering, isExiting }) =>
+                                    cx(
+                                        "w-[min(100vw-2rem,24rem)] origin-(--trigger-anchor-point) overflow-auto rounded-xl bg-primary p-4 shadow-lg ring-1 ring-secondary_alt outline-hidden",
+                                        isEntering &&
+                                            "duration-150 ease-out animate-in fade-in placement-bottom:slide-in-from-top-0.5",
+                                        isExiting &&
+                                            "duration-100 ease-in animate-out fade-out placement-bottom:slide-out-to-top-0.5",
+                                    )
+                                }
+                            >
+                                <Dialog className="outline-hidden">
+                                    <div className="space-y-3">
+                                        <Heading slot="title" className="text-sm font-semibold text-primary">
+                                            {t("filters")}
+                                        </Heading>
+                                        <div className="grid gap-3 sm:grid-cols-2">
+                                            <Select
+                                                size="sm"
+                                                label={t("filterRole")}
+                                                selectedKey={draftFilters.role || "__all__"}
+                                                onSelectionChange={(key) =>
+                                                    updateDraftFilter("role", !key || key === "__all__" ? "" : String(key))
+                                                }
+                                                items={[
+                                                    { id: "__all__", label: t("filterAll") },
+                                                    ...roleOptions,
+                                                ]}
+                                            >
+                                                {(item) => <Select.Item id={item.id} label={item.label} />}
+                                            </Select>
+                                            <Select
+                                                size="sm"
+                                                label={t("filterProvider")}
+                                                selectedKey={draftFilters.auth_provider || "__all__"}
+                                                onSelectionChange={(key) =>
+                                                    updateDraftFilter(
+                                                        "auth_provider",
+                                                        !key || key === "__all__" ? "" : String(key),
+                                                    )
+                                                }
+                                                items={[
+                                                    { id: "__all__", label: t("filterAll") },
+                                                    { id: "local", label: t("providerLocal") },
+                                                    { id: "discord", label: t("providerDiscord") },
+                                                ]}
+                                            >
+                                                {(item) => <Select.Item id={item.id} label={item.label} />}
+                                            </Select>
+                                            <Select
+                                                size="sm"
+                                                label={t("filterStatus")}
+                                                selectedKey={draftFilters.deleted_status || "active"}
+                                                onSelectionChange={(key) =>
+                                                    updateDraftFilter("deleted_status", String(key ?? "active"))
+                                                }
+                                                items={[
+                                                    { id: "active", label: t("statusActive") },
+                                                    { id: "deleted", label: t("statusDeleted") },
+                                                    { id: "all", label: t("statusAll") },
+                                                ]}
+                                            >
+                                                {(item) => <Select.Item id={item.id} label={item.label} />}
+                                            </Select>
+                                        </div>
+                                        <div className="flex justify-between gap-2 pt-1">
+                                            <Button type="button" color="link-gray" size="sm" onPress={clearFilters}>
+                                                {t("filterClear")}
+                                            </Button>
+                                            <Button type="button" size="sm" onPress={() => applySearch()}>
+                                                {tCommon("search")}
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </Dialog>
+                            </Popover>
+                        </DialogTrigger>
+                    </div>
+                </form>
 
-                                        const runAction = (key: ActionKey) => {
-                                            switch (key) {
-                                                case "edit":
-                                                    openEdit(user);
-                                                    break;
-                                                case "sendReset":
-                                                    openConfirm("sendReset", user);
-                                                    break;
-                                                case "setPassword":
-                                                    openReset(user);
-                                                    break;
-                                                case "verifyEmail":
-                                                    openConfirm("verifyEmail", user);
-                                                    break;
-                                                case "kick":
-                                                    openConfirm("kick", user);
-                                                    break;
-                                                case "delete":
-                                                    openConfirm("delete", user);
-                                                    break;
-                                                case "restore":
-                                                    openConfirm("restore", user);
-                                                    break;
-                                            }
-                                        };
-
-                                        const isDeleted = Boolean(user.deleted_at);
-
-                                        return (
-                                            <Table.Row id={user.id}>
-                                                <Table.Cell>
-                                                    <div>
-                                                        <p className="font-medium text-primary">
-                                                            {user.username}
-                                                            {isSelf ? (
-                                                                <span className="ml-2 text-xs font-normal text-tertiary">
-                                                                    ({t("you")})
-                                                                </span>
-                                                            ) : null}
-                                                            {isDeleted ? (
-                                                                <span className="ml-2">
-                                                                    <Badge color="error" size="sm">
-                                                                        {t("deleted")}
-                                                                    </Badge>
-                                                                </span>
-                                                            ) : null}
-                                                        </p>
-                                                        <p className="text-sm text-tertiary">{user.email}</p>
-                                                    </div>
-                                                </Table.Cell>
-                                                <Table.Cell>
-                                                    <Badge color={user.role === "admin" ? "brand" : "gray"} size="sm">
-                                                        {user.role}
-                                                    </Badge>
-                                                </Table.Cell>
-                                                <Table.Cell>
-                                                    <Badge color="blue" size="sm">
-                                                        {user.auth_provider}
-                                                    </Badge>
-                                                </Table.Cell>
-                                                <Table.Cell>
-                                                    <Badge color={verified ? "success" : "warning"} size="sm">
-                                                        {verified ? t("verified") : t("unverified")}
-                                                    </Badge>
-                                                </Table.Cell>
-                                                <Table.Cell>{formatDate(user.created_at, { locale })}</Table.Cell>
-                                                <Table.Cell>{formatDate(user.updated_at, { locale })}</Table.Cell>
-                                                <Table.Cell>
-                                                    <div className="flex items-center justify-center gap-1">
-                                                        {visibleActions.map((action) => (
-                                                            <ButtonUtility
-                                                                key={action.id}
-                                                                size="sm"
-                                                                color="tertiary"
-                                                                icon={action.icon}
-                                                                tooltip={action.label}
-                                                                onPress={() => runAction(action.id)}
-                                                            />
-                                                        ))}
-                                                        {overflowActions.length > 0 ? (
-                                                            <Dropdown.Root>
-                                                                <Dropdown.DotsButton aria-label={t("actionMenu")} />
-                                                                <Dropdown.Popover className="w-min">
-                                                                    <Dropdown.Menu
-                                                                        onAction={(key) => runAction(String(key) as ActionKey)}
-                                                                    >
-                                                                        {overflowActions.flatMap((action) => {
-                                                                            const item = (
-                                                                                <Dropdown.Item
-                                                                                    key={action.id}
-                                                                                    id={action.id}
-                                                                                    icon={action.icon}
-                                                                                    label={action.label}
-                                                                                />
-                                                                            );
-                                                                            if (action.id === "delete") {
-                                                                                return [
-                                                                                    <Dropdown.Separator key={`${action.id}-sep`} />,
-                                                                                    item,
-                                                                                ];
-                                                                            }
-                                                                            return [item];
-                                                                        })}
-                                                                    </Dropdown.Menu>
-                                                                </Dropdown.Popover>
-                                                            </Dropdown.Root>
-                                                        ) : null}
-                                                    </div>
-                                                </Table.Cell>
-                                            </Table.Row>
-                                        );
-                                    }}
-                                </Table.Body>
-                            </Table>
-                            <PaginationCardAdvanced
-                                page={page}
-                                total={totalPages}
-                                pageSize={pageSize}
-                                align="space-between"
-                                rowsPerPageLabel={t("rowsPerPage")}
-                                onPageChange={setPage}
-                                onPageSizeChange={(size) => {
-                                    setPageSize(size);
-                                    setPage(1);
-                                }}
+                {loading ? (
+                    <div className="flex flex-1 items-center justify-center py-16">
+                        <LoadingIndicator size="md" label={t("loading")} />
+                    </div>
+                ) : users.length === 0 ? (
+                    <div className="flex min-h-[min(28rem,60dvh)] w-full flex-1 items-center justify-center px-8 py-12">
+                        <EmptyState size="md">
+                            <EmptyState.Header>
+                                <EmptyState.FeaturedIcon
+                                    color="gray"
+                                    theme="modern"
+                                    icon={appliedSearch || activeFilterCount > 0 ? SearchLg : Users01}
+                                />
+                            </EmptyState.Header>
+                            <EmptyState.Content>
+                                <EmptyState.Title>
+                                    {appliedSearch || activeFilterCount > 0 ? t("emptyTitle") : t("emptyNoUsersTitle")}
+                                </EmptyState.Title>
+                                <EmptyState.Description>
+                                    {appliedSearch
+                                        ? t("emptySearchDescription", { query: appliedSearch })
+                                        : activeFilterCount > 0
+                                          ? t("emptyDescription")
+                                          : t("emptyNoUsersDescription")}
+                                </EmptyState.Description>
+                            </EmptyState.Content>
+                            <EmptyState.Footer>
+                                {appliedSearch || activeFilterCount > 0 ? (
+                                    <Button size="md" color="secondary" onPress={clearFilters}>
+                                        {t("clearSearch")}
+                                    </Button>
+                                ) : can(Permission.UsersCreate) ? (
+                                    <Button size="md" iconLeading={Plus} onPress={openCreate}>
+                                        {t("addUser")}
+                                    </Button>
+                                ) : null}
+                            </EmptyState.Footer>
+                        </EmptyState>
+                    </div>
+                ) : (
+                    <Table
+                        aria-label={t("tableTitle")}
+                        size="sm"
+                        className="min-w-[64rem]"
+                        sortDescriptor={sortDescriptor}
+                        onSortChange={(next) => {
+                            setPage(1);
+                            setSortDescriptor(next);
+                        }}
+                    >
+                        <Table.Header>
+                            <Table.Head id="username" label={t("user")} isRowHeader allowsSorting />
+                            <Table.Head id="role" label={t("role")} allowsSorting />
+                            <Table.Head id="plan_code" label={t("plan")} allowsSorting />
+                            <Table.Head id="auth_provider" label={t("provider")} allowsSorting />
+                            <Table.Head id="email_verified_at" label={t("emailStatus")} allowsSorting />
+                            <Table.Head id="created_at" label={t("created")} allowsSorting />
+                            <Table.Head id="updated_at" label={t("updated")} allowsSorting />
+                            <Table.Head
+                                label={t("actions")}
+                                className="sticky right-0 z-20 border-l border-secondary bg-secondary [&>div]:justify-center"
                             />
-                        </>
-                    )}
-                </TableCard.Root>
-            )}
+                        </Table.Header>
+                        <Table.Body items={users}>
+                            {(user) => {
+                                const isSelf = user.id === currentUserId;
+                                const verified = Boolean(user.email_verified_at);
+                                const actions = getUserActions(user, currentUserId, t, can);
+                                const visibleActions = actions.slice(0, VISIBLE_ACTION_LIMIT);
+                                const overflowActions = actions.slice(VISIBLE_ACTION_LIMIT);
+
+                                const runAction = (key: ActionKey) => {
+                                    switch (key) {
+                                        case "edit":
+                                            openEdit(user);
+                                            break;
+                                        case "sendReset":
+                                            openConfirm("sendReset", user);
+                                            break;
+                                        case "setPlan":
+                                            openPlan(user);
+                                            break;
+                                        case "setPassword":
+                                            openReset(user);
+                                            break;
+                                        case "verifyEmail":
+                                            openConfirm("verifyEmail", user);
+                                            break;
+                                        case "kick":
+                                            openConfirm("kick", user);
+                                            break;
+                                        case "delete":
+                                            openConfirm("delete", user);
+                                            break;
+                                        case "restore":
+                                            openConfirm("restore", user);
+                                            break;
+                                    }
+                                };
+
+                                const isDeleted = Boolean(user.deleted_at);
+
+                                return (
+                                    <Table.Row id={user.id} className="group/row">
+                                        <Table.Cell>
+                                            <div>
+                                                <p className="font-medium text-primary">
+                                                    {user.username}
+                                                    {isSelf ? (
+                                                        <span className="ml-2 text-xs font-normal text-tertiary">
+                                                            ({t("you")})
+                                                        </span>
+                                                    ) : null}
+                                                    {isDeleted ? (
+                                                        <span className="ml-2">
+                                                            <Badge color="error" size="sm">
+                                                                {t("deleted")}
+                                                            </Badge>
+                                                        </span>
+                                                    ) : null}
+                                                </p>
+                                                <p className="text-sm text-tertiary">{user.email}</p>
+                                            </div>
+                                        </Table.Cell>
+                                        <Table.Cell>
+                                            <BadgeWithDot color={roleBadgeColor(user.role)} size="sm">
+                                                {user.role}
+                                            </BadgeWithDot>
+                                        </Table.Cell>
+                                        <Table.Cell>
+                                            <BadgeWithDot color={planBadgeColor(user.plan_code || "free")} size="sm">
+                                                {planLabel(user.plan_code, t)}
+                                            </BadgeWithDot>
+                                        </Table.Cell>
+                                        <Table.Cell>
+                                            <BadgeWithDot color="blue" size="sm">
+                                                {user.auth_provider}
+                                            </BadgeWithDot>
+                                        </Table.Cell>
+                                        <Table.Cell>
+                                            <BadgeWithDot color={verified ? "success" : "warning"} size="sm">
+                                                {verified ? t("verified") : t("unverified")}
+                                            </BadgeWithDot>
+                                        </Table.Cell>
+                                        <Table.Cell>{formatDate(user.created_at, { locale })}</Table.Cell>
+                                        <Table.Cell>{formatDate(user.updated_at, { locale })}</Table.Cell>
+                                        <Table.Cell className="sticky right-0 z-10 border-l border-secondary bg-primary group-hover/row:bg-secondary">
+                                            <div className="flex items-center justify-center gap-1">
+                                                {visibleActions.map((action) => (
+                                                    <ButtonUtility
+                                                        key={action.id}
+                                                        size="xs"
+                                                        color="secondary"
+                                                        icon={action.icon}
+                                                        tooltip={action.label}
+                                                        onPress={() => runAction(action.id)}
+                                                    />
+                                                ))}
+                                                {overflowActions.length > 0 ? (
+                                                    <Dropdown.Root>
+                                                        <ButtonUtility
+                                                            size="xs"
+                                                            color="secondary"
+                                                            icon={DotsVertical}
+                                                            aria-label={t("actionMenu")}
+                                                        />
+                                                        <Dropdown.Popover className="w-min">
+                                                            <Dropdown.Menu
+                                                                onAction={(key) => runAction(String(key) as ActionKey)}
+                                                            >
+                                                                {overflowActions.flatMap((action) => {
+                                                                    const item = (
+                                                                        <Dropdown.Item
+                                                                            key={action.id}
+                                                                            id={action.id}
+                                                                            icon={action.icon}
+                                                                            label={action.label}
+                                                                        />
+                                                                    );
+                                                                    if (action.id === "delete") {
+                                                                        return [
+                                                                            <Dropdown.Separator key={`${action.id}-sep`} />,
+                                                                            item,
+                                                                        ];
+                                                                    }
+                                                                    return [item];
+                                                                })}
+                                                            </Dropdown.Menu>
+                                                        </Dropdown.Popover>
+                                                    </Dropdown.Root>
+                                                ) : null}
+                                            </div>
+                                        </Table.Cell>
+                                    </Table.Row>
+                                );
+                            }}
+                        </Table.Body>
+                    </Table>
+                )}
+
+                <PaginationCardMinimal
+                    page={page}
+                    total={Math.max(totalPages, 1)}
+                    pageSize={pageSize}
+                    align="left"
+                    onPageChange={setPage}
+                    onPageSizeChange={(size) => {
+                        setPageSize(size);
+                        setPage(1);
+                    }}
+                />
+            </TableCard.Root>
 
             <ModalOverlay
                 isOpen={modalOpen}
                 onOpenChange={(open) => {
                     if (!open) closeDialog();
                 }}
-                isDismissable={!actionMutation.isPending && !resetMutation.isPending && !userMutation.isPending}
+                isDismissable={
+                    !actionMutation.isPending
+                    && !resetMutation.isPending
+                    && !userMutation.isPending
+                    && !planMutation.isPending
+                }
             >
                 <Modal className="max-w-md">
                     <Dialog className="p-6 sm:p-8">
+                        {dialog.type === "plan" ? (
+                            <div className="space-y-5">
+                                <div>
+                                    <Heading slot="title" className="text-lg font-semibold text-primary">
+                                        {t("setPlanTitle", { name: dialog.user.username })}
+                                    </Heading>
+                                    <p className="mt-1 text-sm text-tertiary">{t("setPlanDescription")}</p>
+                                </div>
+                                <Select
+                                    label={t("plan")}
+                                    selectedKey={planChoice}
+                                    onSelectionChange={(key) => {
+                                        if (key === "free" || key === "pro") setPlanChoice(key);
+                                    }}
+                                    items={[
+                                        { id: "free", label: t("planFree") },
+                                        { id: "pro", label: t("planPro") },
+                                    ]}
+                                >
+                                    {(item) => <Select.Item id={item.id} label={item.label} />}
+                                </Select>
+                                <div className="flex justify-end gap-3">
+                                    <Button color="secondary" onPress={() => closeDialog()} isDisabled={planMutation.isPending}>
+                                        {t("cancel")}
+                                    </Button>
+                                    <Button onPress={() => planMutation.mutate()} isLoading={planMutation.isPending}>
+                                        {t("save")}
+                                    </Button>
+                                </div>
+                            </div>
+                        ) : null}
+
                         {dialog.type === "confirm" ? (
                             <div className="space-y-5">
                                 <Heading slot="title" className="text-lg font-semibold text-primary">
@@ -810,11 +1009,55 @@ export default function UserAccountsPage() {
                             </div>
                         ) : null}
 
+                        {dialog.type === "confirmForm" ? (
+                            <div className="space-y-5">
+                                <Heading slot="title" className="text-lg font-semibold text-primary">
+                                    {dialog.mode === "create" ? t("confirmCreateTitle") : t("confirmUpdateTitle")}
+                                </Heading>
+                                <p className="text-sm text-tertiary">
+                                    {dialog.mode === "create"
+                                        ? t("confirmCreateUser", { name: dialog.values.username })
+                                        : t("confirmUpdateUser", {
+                                              name: dialog.user?.username ?? dialog.values.username,
+                                          })}
+                                </p>
+                                <div className="flex justify-end gap-3">
+                                    <Button color="secondary" onPress={backToForm} isDisabled={userMutation.isPending}>
+                                        {t("back")}
+                                    </Button>
+                                    <Button onPress={() => userMutation.mutate()} isLoading={userMutation.isPending}>
+                                        {t("confirm")}
+                                    </Button>
+                                </div>
+                            </div>
+                        ) : null}
+
+                        {dialog.type === "confirmReset" ? (
+                            <div className="space-y-5">
+                                <Heading slot="title" className="text-lg font-semibold text-primary">
+                                    {t("confirmResetTitle")}
+                                </Heading>
+                                <p className="text-sm text-tertiary">
+                                    {t("confirmSetPassword", { name: dialog.user.username })}
+                                </p>
+                                <div className="flex justify-end gap-3">
+                                    <Button color="secondary" onPress={backToForm} isDisabled={resetMutation.isPending}>
+                                        {t("back")}
+                                    </Button>
+                                    <Button onPress={() => resetMutation.mutate()} isLoading={resetMutation.isPending}>
+                                        {t("confirm")}
+                                    </Button>
+                                </div>
+                            </div>
+                        ) : null}
+
                         {dialog.type === "reset" ? (
                             <form
                                 className="space-y-5"
                                 noValidate
-                                onSubmit={resetForm.handleSubmit((values) => resetMutation.mutate(values))}
+                                onSubmit={resetForm.handleSubmit((values) =>
+                                    openDialog({ type: "confirmReset", user: dialog.user, values }),
+                                )}
                             >
                                 <div>
                                     <Heading slot="title" className="text-lg font-semibold text-primary">
@@ -834,6 +1077,7 @@ export default function UserAccountsPage() {
                                             ref={field.ref}
                                             type="password"
                                             label={t("password")}
+                                            placeholder={tCommon("enterData")}
                                             isInvalid={Boolean(fieldState.error)}
                                             hint={fieldState.error?.message}
                                         />
@@ -851,6 +1095,7 @@ export default function UserAccountsPage() {
                                             ref={field.ref}
                                             type="password"
                                             label={t("confirmPassword")}
+                                            placeholder={tCommon("enterData")}
                                             isInvalid={Boolean(fieldState.error)}
                                             hint={fieldState.error?.message}
                                         />
@@ -871,7 +1116,14 @@ export default function UserAccountsPage() {
                             <form
                                 className="space-y-5"
                                 noValidate
-                                onSubmit={userForm.handleSubmit((values) => userMutation.mutate(values))}
+                                onSubmit={userForm.handleSubmit((values) =>
+                                    openDialog({
+                                        type: "confirmForm",
+                                        mode: dialog.mode,
+                                        user: dialog.user,
+                                        values,
+                                    }),
+                                )}
                             >
                                 <div>
                                     <Heading slot="title" className="text-lg font-semibold text-primary">
@@ -893,6 +1145,7 @@ export default function UserAccountsPage() {
                                             ref={field.ref}
                                             isRequired
                                             label={t("username")}
+                                            placeholder={tCommon("enterData")}
                                             isInvalid={Boolean(fieldState.error)}
                                             hint={fieldState.error?.message}
                                         />
@@ -911,9 +1164,28 @@ export default function UserAccountsPage() {
                                             isRequired
                                             type="email"
                                             label={t("email")}
+                                            placeholder={tCommon("enterData")}
                                             isInvalid={Boolean(fieldState.error)}
                                             hint={fieldState.error?.message}
                                         />
+                                    )}
+                                />
+                                <Controller
+                                    name="role_id"
+                                    control={userForm.control}
+                                    render={({ field, fieldState }) => (
+                                        <Select
+                                            label={t("role")}
+                                            isRequired
+                                            selectedKey={field.value || null}
+                                            onSelectionChange={(key) => field.onChange(key ? String(key) : "")}
+                                            items={roleOptions}
+                                            isInvalid={Boolean(fieldState.error)}
+                                            hint={fieldState.error?.message}
+                                            placeholder={tCommon("enterData")}
+                                        >
+                                            {(item) => <Select.Item id={item.id} label={item.label} />}
+                                        </Select>
                                     )}
                                 />
                                 <div className="flex justify-end gap-3">

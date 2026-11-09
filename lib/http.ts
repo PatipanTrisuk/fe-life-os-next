@@ -1,6 +1,6 @@
 import axios, { AxiosError, type AxiosInstance, type InternalAxiosRequestConfig } from "axios";
 import { getDevicePayload } from "@/lib/device";
-import { notify } from "@/lib/notify";
+import { notify, notifyBillingLimit } from "@/lib/notify";
 import {
     clearSession,
     getAccessToken,
@@ -21,12 +21,14 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "/go-api";
 export class ApiError extends Error {
     status: number;
     code?: string;
+    meta?: Record<string, unknown>;
 
-    constructor(status: number, message: string, code?: string) {
+    constructor(status: number, message: string, code?: string, meta?: Record<string, unknown>) {
         super(message);
         this.name = "ApiError";
         this.status = status;
         this.code = code;
+        this.meta = meta;
     }
 }
 
@@ -60,6 +62,7 @@ export function toApiError(error: unknown, unreachableMessage?: string): ApiErro
             ax.response.status,
             body?.message || ax.message || "Request failed",
             body?.code,
+            body?.meta && typeof body.meta === "object" ? body.meta : undefined,
         );
     }
 
@@ -136,6 +139,8 @@ function shouldSkipErrorToast(config?: RetryConfig) {
         || url.includes("/api/auth/refresh")
         || url.includes("/api/auth/forgot-password")
         || url.includes("/api/auth/reset-password")
+        || url.includes("/api/auth/verify-email")
+        || url.includes("/api/auth/resend-verification")
         || url.includes("/api/auth/discord")
     );
 }
@@ -152,6 +157,8 @@ http.interceptors.response.use(
                 || config.url?.includes("/api/auth/refresh")
                 || config.url?.includes("/api/auth/forgot-password")
                 || config.url?.includes("/api/auth/reset-password")
+                || config.url?.includes("/api/auth/verify-email")
+                || config.url?.includes("/api/auth/resend-verification")
                 || config.url?.includes("/api/auth/discord");
 
             if (!isAuthRoute && getRefreshToken()) {
@@ -166,7 +173,11 @@ http.interceptors.response.use(
 
         const apiError = toApiError(error);
         if (!shouldSkipErrorToast(config)) {
-            notify.error(apiError.message);
+            if (apiError.code === "billing.limit_reached") {
+                notifyBillingLimit(apiError, getLocale());
+            } else {
+                notify.error(apiError.message);
+            }
         }
 
         return Promise.reject(apiError);

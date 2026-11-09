@@ -13,7 +13,8 @@ import { LocaleSwitcher } from "@/components/base/locale-switcher/locale-switche
 import { ThemeToggle } from "@/components/base/theme-toggle/theme-toggle";
 import { Button } from "@/components/base/buttons/button";
 import { Input } from "@/components/base/input/input";
-import { ApiError, authApi, toApiError } from "@/lib/api";
+import { authApi, toApiError } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { createResetPasswordSchema, type ResetPasswordInput } from "@/lib/schemas";
 import { Link, useRouter } from "@/i18n/navigation";
 
@@ -29,9 +30,6 @@ export function ResetPasswordForm() {
     const {
         control,
         handleSubmit,
-        formState: { errors },
-        setError,
-        clearErrors,
         reset,
     } = useForm<ResetPasswordInput>({
         resolver: zodResolver(schema),
@@ -45,10 +43,8 @@ export function ResetPasswordForm() {
     });
 
     const onSubmit = handleSubmit(async (values) => {
-        clearErrors("root");
-
         if (!token) {
-            setError("root", { message: t("resetPassword.missingToken") });
+            notify.error(t("resetPassword.missingToken"));
             return;
         }
 
@@ -57,15 +53,12 @@ export function ResetPasswordForm() {
             reset({ password: "", confirmPassword: "" });
             setSuccess(true);
         } catch (err) {
-            const apiErr = toApiError(err);
-            setError("root", {
-                message: apiErr instanceof ApiError ? apiErr.message : t("resetPassword.failed"),
-            });
+            notify.error(toApiError(err).message);
         }
     });
 
     const toolbar = (
-        <div className="mb-5 flex items-center justify-end gap-2">
+        <div className="mb-5 flex h-10 items-center justify-end gap-2">
             <LocaleSwitcher />
             <ThemeToggle />
         </div>
@@ -157,7 +150,7 @@ export function ResetPasswordForm() {
                             isRequired
                             label={t("resetPassword.password")}
                             type="password"
-                            placeholder={t("resetPassword.passwordPlaceholder")}
+                            placeholder={t("common.enterData")}
                             isInvalid={Boolean(fieldState.error)}
                             hint={fieldState.error?.message}
                             autoComplete="new-password"
@@ -177,14 +170,13 @@ export function ResetPasswordForm() {
                             isRequired
                             label={t("resetPassword.confirmPassword")}
                             type="password"
+                            placeholder={t("common.enterData")}
                             isInvalid={Boolean(fieldState.error)}
                             hint={fieldState.error?.message}
                             autoComplete="new-password"
                         />
                     )}
                 />
-
-                {errors.root?.message ? <p className="text-sm text-error-primary">{errors.root.message}</p> : null}
 
                 <Button
                     type="submit"

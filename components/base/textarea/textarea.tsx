@@ -2,6 +2,7 @@
 
 import type { ReactNode, Ref } from "react";
 import React from "react";
+import { useTranslations } from "next-intl";
 import type { TextAreaProps as AriaTextAreaProps, TextFieldProps as AriaTextFieldProps } from "react-aria-components";
 import { TextArea as AriaTextArea, TextField as AriaTextField } from "react-aria-components";
 import { HintText } from "@/components/base/input/hint-text";
@@ -93,6 +94,9 @@ export const TextArea = ({
     size = "md",
     ...props
 }: TextFieldProps) => {
+    const t = useTranslations("common");
+    const resolvedPlaceholder = placeholder ?? t("enterData");
+
     return (
         <AriaTextField
             {...props}
@@ -108,7 +112,14 @@ export const TextArea = ({
                         </Label>
                     )}
 
-                    <TextAreaBase placeholder={placeholder} className={textAreaClassName} ref={textAreaRef} rows={rows} cols={cols} size={size} />
+                    <TextAreaBase
+                        placeholder={resolvedPlaceholder}
+                        className={textAreaClassName}
+                        ref={textAreaRef}
+                        rows={rows}
+                        cols={cols}
+                        size={size}
+                    />
 
                     {hint && (
                         <HintText isInvalid={isInvalid} size={size}>

@@ -21,6 +21,10 @@ import {
     saveUser,
     setRememberedEmail,
 } from "@/lib/token-storage";
+import {
+    canAccessAdminArea,
+    hasPermission as checkPermission,
+} from "@/lib/permissions";
 import type { AuthSession, User } from "@/lib/types";
 
 type LoginOptions = {
@@ -32,11 +36,14 @@ type AuthContextValue = {
     isLoading: boolean;
     isAuthenticated: boolean;
     isAdmin: boolean;
+    canManage: boolean;
+    hasPermission: (permission: string) => boolean;
     login: (email: string, password: string, options?: LoginOptions) => Promise<void>;
     register: (username: string, email: string, password: string) => Promise<void>;
     loginWithDiscordSession: (session: AuthSession, options?: LoginOptions) => void;
     logout: () => Promise<void>;
     refreshProfile: () => Promise<User | null>;
+    setProfile: (user: User) => void;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -154,33 +161,58 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }, [logoutMutation]);
 
     const refreshProfile = useCallback(async () => {
-        const data = await queryClient.fetchQuery({
-            queryKey: queryKeys.profile,
-            queryFn: async () => {
-                const res = await authApi.profile();
-                saveUser(res.data);
-                return res.data;
-            },
-        });
-        return data;
+        // Always hit the network — fetchQuery alone can return cached data while staleTime is active.
+        const res = await authApi.profile();
+        saveUser(res.data);
+        queryClient.setQueryData(queryKeys.profile, res.data);
+        return res.data;
     }, [queryClient]);
+
+    const setProfile = useCallback(
+        (next: User) => {
+            saveUser(next);
+            queryClient.setQueryData(queryKeys.profile, next);
+        },
+        [queryClient],
+    );
 
     const user = profileQuery.data ?? null;
     const isLoading = !bootstrapped || (hasToken && profileQuery.isLoading && !user);
+    const isAdmin = user?.role?.toLowerCase() === "admin";
+    const canManage = canAccessAdminArea(user?.role, user?.permissions);
+    const hasPermission = useCallback(
+        (permission: string) => checkPermission(user?.role, permission, user?.permissions),
+        [user?.role, user?.permissions],
+    );
 
     const value = useMemo<AuthContextValue>(
         () => ({
             user,
             isLoading,
             isAuthenticated: Boolean(user),
-            isAdmin: user?.role?.toLowerCase() === "admin",
+            isAdmin,
+            canManage,
+            hasPermission,
             login,
             register,
             loginWithDiscordSession,
             logout,
             refreshProfile,
+            setProfile,
         }),
-        [user, isLoading, login, register, loginWithDiscordSession, logout, refreshProfile],
+        [
+            user,
+            isLoading,
+            isAdmin,
+            canManage,
+            hasPermission,
+            login,
+            register,
+            loginWithDiscordSession,
+            logout,
+            refreshProfile,
+            setProfile,
+        ],
     );
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -192,7 +224,7 @@ export function useAuth() {
     return ctx;
 }
 
-export function useRequireAuth(options?: { admin?: boolean }) {
+export function useRequireAuth(options?: { admin?: boolean; permission?: string }) {
     const auth = useAuth();
     const router = useRouter();
 
@@ -202,10 +234,22 @@ export function useRequireAuth(options?: { admin?: boolean }) {
             router.replace("/login");
             return;
         }
-        if (options?.admin && !auth.isAdmin) {
+        if (options?.permission && !auth.hasPermission(options.permission)) {
+            router.replace("/profile");
+            return;
+        }
+        if (options?.admin && !auth.canManage) {
             router.replace("/profile");
         }
-    }, [auth.isLoading, auth.isAuthenticated, auth.isAdmin, options?.admin, router]);
+    }, [
+        auth.isLoading,
+        auth.isAuthenticated,
+        auth.canManage,
+        auth.hasPermission,
+        options?.admin,
+        options?.permission,
+        router,
+    ]);
 
     return auth;
 }

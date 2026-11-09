@@ -1,200 +1,136 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { useTranslations } from "next-intl";
-import { Bell01, ChevronRight, LogOut01, Menu01, Users01, XClose } from "@untitledui/icons";
-import { Button } from "@/components/base/buttons/button";
+import {
+    BarChart01,
+    Bell01,
+    Calendar,
+    CalendarDate,
+    CheckCircle,
+    CoinsStacked01,
+    Colors,
+    File06,
+    Flag06,
+    Key01,
+    LayoutAlt01,
+    LineChartUp01,
+    Users01,
+} from "@untitledui/icons";
+import { AppNavAccountCard } from "@/components/application/app-navigation/base-components/app-nav-account-card";
+import type { NavItemType } from "@/components/application/app-navigation/config";
+import { SidebarNavigationSimple } from "@/components/application/app-navigation/sidebar-navigation/sidebar-simple";
+import { AppBreadcrumbs } from "@/components/application/breadcrumbs/app-breadcrumbs";
+import { NotificationsPopover } from "@/components/application/notifications/notifications-popover";
 import { LocaleSwitcher } from "@/components/base/locale-switcher/locale-switcher";
 import { ThemeToggle } from "@/components/base/theme-toggle/theme-toggle";
 import { Link, usePathname } from "@/i18n/navigation";
-import { authApi } from "@/lib/api";
-import { queryKeys } from "@/lib/query-keys";
 import { useAuth } from "@/providers/auth-provider";
-import { cx } from "@/utils/cx";
 
+const DASHBOARD_HREF = "/lifeos/dashboard" as const;
+const GOALS_HREF = "/lifeos/goals" as const;
+const HABITS_HREF = "/lifeos/habits" as const;
+const PLANNER_HREF = "/lifeos/planner" as const;
+const CALENDAR_HREF = "/lifeos/calendar" as const;
+const NOTES_HREF = "/lifeos/notes" as const;
+const FINANCE_HREF = "/lifeos/finance" as const;
+const REMINDERS_HREF = "/lifeos/reminders" as const;
+const ANALYTICS_HREF = "/lifeos/analytics" as const;
 const USERS_HREF = "/manage/general/users" as const;
-const NOTIFICATIONS_HREF = "/notifications" as const;
+const ROLES_HREF = "/manage/general/roles" as const;
+const THEME_HREF = "/manage/general/theme" as const;
+const PROFILE_HREF = "/profile" as const;
 
 export function AppShell({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const t = useTranslations();
-    const { user, isAdmin, logout, isLoading } = useAuth();
-    const [mobileOpen, setMobileOpen] = useState(false);
+    const { canManage, hasPermission } = useAuth();
+    const canReadUsers = hasPermission("users.read");
+    const canReadRoles = hasPermission("roles.read");
 
-    const unreadQuery = useQuery({
-        queryKey: queryKeys.notificationsUnread,
-        queryFn: async () => {
-            const res = await authApi.notificationsUnreadCount();
-            return res.data?.unread_count ?? 0;
-        },
-        enabled: Boolean(user),
-        refetchInterval: 20_000,
-    });
-    const unreadCount = unreadQuery.data ?? 0;
+    const activeUrl = pathname.startsWith("/admin") ? USERS_HREF : pathname;
 
-    useEffect(() => {
-        setMobileOpen(false);
-    }, [pathname]);
+    const items = useMemo(() => {
+        const next: NavItemType[] = [
+            {
+                label: t("nav.lifeos"),
+                icon: Flag06,
+                items: [
+                    { label: t("nav.dashboard"), href: DASHBOARD_HREF, icon: BarChart01 },
+                    { label: t("nav.goals"), href: GOALS_HREF, icon: Flag06 },
+                    { label: t("nav.habits"), href: HABITS_HREF, icon: CheckCircle },
+                    { label: t("nav.planner"), href: PLANNER_HREF, icon: Calendar },
+                    { label: t("nav.calendar"), href: CALENDAR_HREF, icon: CalendarDate },
+                    { label: t("nav.notes"), href: NOTES_HREF, icon: File06 },
+                    { label: t("nav.finance"), href: FINANCE_HREF, icon: CoinsStacked01 },
+                    { label: t("nav.reminders"), href: REMINDERS_HREF, icon: Bell01 },
+                    { label: t("nav.analytics"), href: ANALYTICS_HREF, icon: LineChartUp01 },
+                ],
+            },
+        ];
 
-    useEffect(() => {
-        if (!mobileOpen) return;
-        const onKeyDown = (event: KeyboardEvent) => {
-            if (event.key === "Escape") setMobileOpen(false);
-        };
-        window.addEventListener("keydown", onKeyDown);
-        return () => window.removeEventListener("keydown", onKeyDown);
-    }, [mobileOpen]);
+        if (canManage) {
+            const generalItems: NonNullable<NavItemType["items"]> = [];
+            if (canReadUsers) {
+                generalItems.push({ label: t("nav.userAccounts"), href: USERS_HREF, icon: Users01 });
+            }
+            if (canReadRoles) {
+                generalItems.push({ label: t("nav.roles"), href: ROLES_HREF, icon: Key01 });
+            }
+            generalItems.push({ label: t("nav.theme"), href: THEME_HREF, icon: Colors });
 
-    const profileActive = pathname === "/profile" || pathname.startsWith("/profile/");
-    const notificationsActive =
-        pathname === NOTIFICATIONS_HREF || pathname.startsWith(`${NOTIFICATIONS_HREF}/`);
-    const usersActive = pathname === USERS_HREF || pathname.startsWith(`${USERS_HREF}/`) || pathname.startsWith("/admin");
+            next.push({
+                label: t("nav.manage"),
+                icon: LayoutAlt01,
+                items: generalItems,
+            });
+        }
 
-    const sidebar = (
-        <div className="flex h-full flex-col">
-            <div className="flex items-center justify-between gap-3 px-4 py-5 lg:px-5">
-                <Link href="/profile" className="text-lg font-semibold tracking-tight text-primary">
-                    {t("app.name")}
-                </Link>
-                <Button
-                    color="tertiary"
-                    size="sm"
-                    className="lg:hidden"
-                    aria-label={t("nav.closeMenu")}
-                    iconLeading={XClose}
-                    onPress={() => setMobileOpen(false)}
-                />
-            </div>
+        return next;
+    }, [canManage, canReadRoles, canReadUsers, t]);
 
-            <nav className="flex flex-1 flex-col gap-4 overflow-y-auto px-3 lg:px-4">
-                <div className="flex flex-col gap-1">
-                    <Link
-                        href={NOTIFICATIONS_HREF}
-                        className={cx(
-                            "inline-flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition",
-                            notificationsActive
-                                ? "bg-brand-primary text-brand-secondary"
-                                : "text-tertiary hover:bg-primary_hover hover:text-secondary",
-                        )}
-                    >
-                        <Bell01 className="size-5 shrink-0" />
-                        <span className="min-w-0 flex-1">{t("nav.notifications")}</span>
-                        {unreadCount > 0 ? (
-                            <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-brand-solid px-1.5 py-0.5 text-[11px] font-semibold text-white">
-                                {unreadCount > 99 ? "99+" : unreadCount}
-                            </span>
-                        ) : null}
-                    </Link>
-                </div>
-
-                {isAdmin ? (
-                    <div className="flex flex-col gap-2">
-                        <p className="px-3 text-xs font-semibold tracking-wide text-quaternary uppercase">
-                            {t("nav.manage")}
-                        </p>
-
-                        <div className="flex flex-col gap-1">
-                            <p className="px-3 py-1 text-xs font-semibold text-tertiary">{t("nav.general")}</p>
-                            <Link
-                                href={USERS_HREF}
-                                className={cx(
-                                    "inline-flex items-center gap-3 rounded-lg py-2.5 pr-3 pl-6 text-sm font-semibold transition",
-                                    usersActive
-                                        ? "bg-brand-primary text-brand-secondary"
-                                        : "text-tertiary hover:bg-primary_hover hover:text-secondary",
-                                )}
-                            >
-                                <Users01 className="size-5 shrink-0" />
-                                {t("nav.userAccounts")}
-                            </Link>
-                        </div>
-                    </div>
-                ) : null}
-            </nav>
-
-            <div className="mt-auto space-y-3 border-t border-secondary px-3 py-4 lg:px-4">
-                {!isLoading && user ? (
-                    <Link
-                        href="/profile"
-                        aria-current={profileActive ? "page" : undefined}
-                        className={cx(
-                            "flex items-center gap-3 rounded-lg px-3 py-3 transition",
-                            profileActive
-                                ? "bg-brand-primary text-brand-secondary ring-1 ring-brand"
-                                : "bg-secondary hover:bg-primary_hover",
-                        )}
-                    >
-                        <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-semibold text-primary">{user.username}</p>
-                            <p className="truncate text-xs text-tertiary">{user.email}</p>
-                            <p
-                                className={cx(
-                                    "mt-1 text-xs font-semibold",
-                                    profileActive ? "text-brand-secondary" : "text-brand-tertiary",
-                                )}
-                            >
-                                {t("nav.profile")}
-                            </p>
-                        </div>
-                        <ChevronRight className="size-4 shrink-0 text-fg-quaternary" />
-                    </Link>
-                ) : null}
-
-                <div className="flex w-full items-center gap-2">
-                    <LocaleSwitcher className="min-w-0 flex-1" />
-                    <ThemeToggle className="size-10 shrink-0" />
-                </div>
-
-                <Button
-                    color="secondary"
-                    size="md"
-                    className="w-full justify-center"
-                    iconLeading={LogOut01}
-                    onPress={() => void logout()}
-                >
-                    {t("nav.logout")}
-                </Button>
-            </div>
-        </div>
+    const brand = (
+        <Link href={PROFILE_HREF} className="text-lg font-semibold tracking-tight text-primary">
+            {t("app.name")}
+        </Link>
     );
 
     return (
-        <div className="min-h-dvh bg-secondary lg:flex">
-            <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 border-r border-secondary bg-primary lg:block">
-                {sidebar}
-            </aside>
-
-            {mobileOpen ? (
-                <div className="fixed inset-0 z-40 lg:hidden">
-                    <button
-                        type="button"
-                        aria-label={t("nav.closeMenu")}
-                        className="absolute inset-0 bg-overlay/60"
-                        onClick={() => setMobileOpen(false)}
-                    />
-                    <aside className="relative z-10 h-full w-[min(18rem,88vw)] border-r border-secondary bg-primary shadow-xl">
-                        {sidebar}
-                    </aside>
-                </div>
-            ) : null}
+        <div className="flex min-h-dvh flex-col bg-secondary lg:flex-row">
+            <SidebarNavigationSimple
+                activeUrl={activeUrl}
+                items={items}
+                hideSearch
+                showAccountCard={false}
+                logo={brand}
+                accountCard={<AppNavAccountCard />}
+            />
 
             <div className="flex min-w-0 flex-1 flex-col">
-                <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-secondary bg-primary px-4 py-3 lg:hidden">
-                    <Button
-                        color="tertiary"
-                        size="sm"
-                        aria-label={t("nav.openMenu")}
-                        iconLeading={Menu01}
-                        onPress={() => setMobileOpen(true)}
-                    />
-                    <Link href="/profile" className="text-base font-semibold text-primary">
-                        {t("app.name")}
-                    </Link>
-                    <ThemeToggle />
+                <header className="sticky top-0 z-30 border-b border-secondary/70 bg-primary/75 backdrop-blur-xl">
+                    <div className="flex h-16 items-center gap-3 px-4 sm:px-6">
+                        <div className="hidden min-w-0 flex-1 lg:block">
+                            <AppBreadcrumbs />
+                        </div>
+
+                        <div className="ml-auto flex h-10 items-center gap-2 sm:gap-3">
+                            <NotificationsPopover />
+                            <LocaleSwitcher />
+                            <ThemeToggle />
+                        </div>
+                    </div>
                 </header>
 
-                <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:px-6 lg:py-8">{children}</main>
+                <main className="relative w-full flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+                    <div
+                        className="pointer-events-none absolute inset-x-0 top-0 h-48 bg-[radial-gradient(ellipse_at_0%_0%,color-mix(in_oklab,var(--color-bg-brand-primary)_28%,transparent),transparent_60%)]"
+                        aria-hidden
+                    />
+                    <div className="relative">
+                        <AppBreadcrumbs className="mb-4 lg:hidden" />
+                        {children}
+                    </div>
+                </main>
             </div>
         </div>
     );

@@ -1,23 +1,41 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
 import { EmptyState } from "@/components/application/empty-state/empty-state";
 import { LoadingIndicator } from "@/components/application/loading-indicator/loading-indicator";
 import { Table, TableCard } from "@/components/application/table/table";
+import { Button } from "@/components/base/buttons/button";
 import { authApi, toApiError } from "@/lib/api";
 import { formatDate } from "@/lib/date";
 import { queryKeys } from "@/lib/query-keys";
+import { useAuth } from "@/providers/auth-provider";
 
 export default function ProfileDevicesPage() {
     const locale = useLocale();
     const t = useTranslations("devices");
+    const queryClient = useQueryClient();
+    const { logout } = useAuth();
 
     const devicesQuery = useQuery({
         queryKey: queryKeys.devices,
         queryFn: async () => {
             const res = await authApi.devices();
             return res.data ?? [];
+        },
+    });
+
+    const revokeMutation = useMutation({
+        mutationFn: (id: string) => authApi.revokeDevice(id),
+        onSuccess: async () => {
+            await queryClient.invalidateQueries({ queryKey: queryKeys.devices });
+        },
+    });
+
+    const revokeAllMutation = useMutation({
+        mutationFn: () => authApi.revokeAllSessions(),
+        onSuccess: async () => {
+            await logout();
         },
     });
 
@@ -51,13 +69,33 @@ export default function ProfileDevicesPage() {
 
     return (
         <TableCard.Root>
-            <TableCard.Header title={t("tableTitle")} badge={`${devicesQuery.data.length}`} description={t("subtitle")} />
+            <TableCard.Header
+                title={t("tableTitle")}
+                badge={`${devicesQuery.data.length}`}
+                description={t("subtitle")}
+                contentTrailing={
+                    <Button
+                        color="secondary-destructive"
+                        size="sm"
+                        isLoading={revokeAllMutation.isPending}
+                        isDisabled={revokeAllMutation.isPending || revokeMutation.isPending}
+                        onPress={() => {
+                            if (window.confirm(t("revokeAllConfirm"))) {
+                                revokeAllMutation.mutate();
+                            }
+                        }}
+                    >
+                        {t("revokeAll")}
+                    </Button>
+                }
+            />
             <Table aria-label={t("tableTitle")}>
                 <Table.Header>
                     <Table.Head isRowHeader>{t("name")}</Table.Head>
                     <Table.Head>{t("ip")}</Table.Head>
                     <Table.Head>{t("lastSeen")}</Table.Head>
                     <Table.Head>{t("userAgent")}</Table.Head>
+                    <Table.Head>{t("actions")}</Table.Head>
                 </Table.Header>
                 <Table.Body items={devicesQuery.data}>
                     {(device) => (
@@ -72,6 +110,21 @@ export default function ProfileDevicesPage() {
                             <Table.Cell>{formatDate(device.lastSeenAt, { locale, withTime: true })}</Table.Cell>
                             <Table.Cell>
                                 <span className="line-clamp-2 max-w-xs text-xs text-tertiary">{device.userAgent}</span>
+                            </Table.Cell>
+                            <Table.Cell>
+                                <Button
+                                    color="secondary"
+                                    size="sm"
+                                    isLoading={revokeMutation.isPending && revokeMutation.variables === device.id}
+                                    isDisabled={revokeMutation.isPending || revokeAllMutation.isPending}
+                                    onPress={() => {
+                                        if (window.confirm(t("revokeConfirm"))) {
+                                            revokeMutation.mutate(device.id);
+                                        }
+                                    }}
+                                >
+                                    {t("revoke")}
+                                </Button>
                             </Table.Cell>
                         </Table.Row>
                     )}

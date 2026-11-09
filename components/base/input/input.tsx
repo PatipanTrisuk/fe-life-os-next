@@ -1,6 +1,7 @@
 "use client";
 
 import { type ComponentType, type HTMLAttributes, type ReactNode, type Ref, createContext, useContext, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Eye, EyeOff, HelpCircle, InfoCircle } from "@untitledui/icons";
 import type { InputProps as AriaInputProps, TextFieldProps as AriaTextFieldProps } from "react-aria-components";
 import { Button as AriaButton, Group as AriaGroup, Input as AriaInput, TextField as AriaTextField } from "react-aria-components";
@@ -271,14 +272,12 @@ export const Input = ({
     type = "text",
     ...props
 }: InputProps) => {
+    const t = useTranslations("common");
+    // Form fields default to the shared Untitled UI copy; callers can override (e.g. search).
+    const resolvedPlaceholder = placeholder ?? (type === "date" ? undefined : t("enterData"));
+
     return (
-        <TextField
-            aria-label={!label ? placeholder : undefined}
-            validationBehavior="aria"
-            {...props}
-            size={size}
-            className={className}
-        >
+        <TextField aria-label={!label ? resolvedPlaceholder : undefined} {...props} size={size} className={className}>
             {({ isRequired, isInvalid }) => (
                 <>
                     {label && (
@@ -292,7 +291,7 @@ export const Input = ({
                             ref,
                             groupRef,
                             size,
-                            placeholder,
+                            placeholder: resolvedPlaceholder,
                             icon: Icon,
                             shortcut,
                             iconClassName,
@@ -301,18 +300,10 @@ export const Input = ({
                             tooltipClassName,
                             tooltip,
                             type,
-                            isInvalid,
-                            isRequired,
                         }}
                     />
 
-                    {hint ? (
-                        isInvalid ? (
-                            <p className="w-full text-sm text-error-primary">{hint}</p>
-                        ) : (
-                            <HintText className="w-full">{hint}</HintText>
-                        )
-                    ) : null}
+                    {hint && <HintText isInvalid={isInvalid}>{hint}</HintText>}
                 </>
             )}
         </TextField>

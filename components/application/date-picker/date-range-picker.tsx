@@ -19,13 +19,24 @@ const highlightedDates = [today(getLocalTimeZone())];
 interface DateRangePickerProps extends AriaDateRangePickerProps<DateValue> {
     /** Controls the size of the trigger button that opens the calendar. */
     size?: ButtonProps["size"];
+    /** Placeholder shown when no date range is selected. */
+    placeholder?: string;
     /** The function to call when the apply button is clicked. */
     onApply?: () => void;
     /** The function to call when the cancel button is clicked. */
     onCancel?: () => void;
 }
 
-export const DateRangePicker = ({ value: valueProp, defaultValue, onChange, onApply, onCancel, size = "sm", ...props }: DateRangePickerProps) => {
+export const DateRangePicker = ({
+    value: valueProp,
+    defaultValue,
+    onChange,
+    onApply,
+    onCancel,
+    size = "sm",
+    placeholder = "Select dates",
+    ...props
+}: DateRangePickerProps) => {
     const { locale } = useLocale();
     const formatter = useDateFormatter({
         month: "short",
@@ -35,8 +46,8 @@ export const DateRangePicker = ({ value: valueProp, defaultValue, onChange, onAp
     const [value, setValue] = useControlledState(valueProp, defaultValue || null, onChange);
     const [focusedValue, setFocusedValue] = useState<DateValue | null>(null);
 
-    const formattedStartDate = value?.start ? formatter.format(value.start.toDate(getLocalTimeZone())) : "Select date";
-    const formattedEndDate = value?.end ? formatter.format(value.end.toDate(getLocalTimeZone())) : "Select date";
+    const formattedStartDate = value?.start ? formatter.format(value.start.toDate(getLocalTimeZone())) : placeholder;
+    const formattedEndDate = value?.end ? formatter.format(value.end.toDate(getLocalTimeZone())) : placeholder;
 
     const presets = useMemo(
         () => ({
@@ -81,7 +92,7 @@ export const DateRangePicker = ({ value: valueProp, defaultValue, onChange, onAp
         <AriaDateRangePicker aria-label="Date range picker" shouldCloseOnSelect={false} {...props} value={value} onChange={setValue}>
             <AriaGroup>
                 <Button size={size} color="secondary" iconLeading={CalendarIcon}>
-                    {!value ? <span className="text-placeholder">Select dates</span> : `${formattedStartDate} – ${formattedEndDate}`}
+                    {!value ? <span className="text-placeholder">{placeholder}</span> : `${formattedStartDate} – ${formattedEndDate}`}
                 </Button>
             </AriaGroup>
             <AriaPopover

@@ -1,11 +1,14 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { Prompt } from "next/font/google";
+import Script from "next/script";
 import { NextIntlClientProvider } from "next-intl";
 import { AuthProvider } from "@/providers/auth-provider";
 import { NotificationProvider } from "@/providers/notification-provider";
 import { QueryProvider } from "@/providers/query-provider";
+import { ColorThemeProvider } from "@/providers/color-theme-provider";
 import { ThemeProvider } from "@/providers/theme-provider";
+import { COLOR_THEME_BOOT_SCRIPT } from "@/lib/color-theme";
 import enMessages from "@/messages/en.json";
 import "@/styles/globals.css";
 
@@ -36,13 +39,18 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     return (
         <html lang="en" className={`${prompt.variable} scroll-smooth`} suppressHydrationWarning>
             <body className={`${prompt.className} bg-primary text-primary antialiased`}>
+                <Script id="color-theme-boot" strategy="beforeInteractive">
+                    {COLOR_THEME_BOOT_SCRIPT}
+                </Script>
                 <NextIntlClientProvider locale="en" messages={enMessages}>
                     <ThemeProvider>
-                        <QueryProvider>
-                            <NotificationProvider>
-                                <AuthProvider>{children}</AuthProvider>
-                            </NotificationProvider>
-                        </QueryProvider>
+                        <ColorThemeProvider>
+                            <QueryProvider>
+                                <NotificationProvider>
+                                    <AuthProvider>{children}</AuthProvider>
+                                </NotificationProvider>
+                            </QueryProvider>
+                        </ColorThemeProvider>
                     </ThemeProvider>
                 </NextIntlClientProvider>
             </body>

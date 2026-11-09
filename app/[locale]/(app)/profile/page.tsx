@@ -2,7 +2,7 @@
 
 import { useLocale, useTranslations } from "next-intl";
 import { AvatarLabelGroup } from "@/components/base/avatar/avatar-label-group";
-import { Badge } from "@/components/base/badges/badges";
+import { BadgeWithDot } from "@/components/base/badges/badges";
 import { formatDate } from "@/lib/date";
 import { useAuth } from "@/providers/auth-provider";
 
@@ -26,17 +26,42 @@ export default function ProfilePage() {
                 <div>
                     <dt className="text-sm text-tertiary">{t("role")}</dt>
                     <dd className="mt-1">
-                        <Badge color={user.role === "admin" ? "brand" : "gray"} size="sm">
+                        <BadgeWithDot
+                            color={
+                                user.role === "admin"
+                                    ? "brand"
+                                    : user.role === "moderator"
+                                      ? "success"
+                                      : "gray"
+                            }
+                            size="sm"
+                        >
                             {user.role}
-                        </Badge>
+                        </BadgeWithDot>
+                    </dd>
+                </div>
+                <div>
+                    <dt className="text-sm text-tertiary">{t("plan")}</dt>
+                    <dd className="mt-1">
+                        <BadgeWithDot color={user.plan_code === "pro" ? "brand" : "gray"} size="sm">
+                            {user.plan_code === "pro" ? t("planPro") : t("planFree")}
+                        </BadgeWithDot>
                     </dd>
                 </div>
                 <div>
                     <dt className="text-sm text-tertiary">{t("authProvider")}</dt>
                     <dd className="mt-1">
-                        <Badge color="blue" size="sm">
+                        <BadgeWithDot color="blue" size="sm">
                             {user.auth_provider}
-                        </Badge>
+                        </BadgeWithDot>
+                    </dd>
+                </div>
+                <div>
+                    <dt className="text-sm text-tertiary">{t("emailVerified")}</dt>
+                    <dd className="mt-1">
+                        <BadgeWithDot color={user.email_verified_at ? "success" : "warning"} size="sm">
+                            {user.email_verified_at ? t("emailVerified") : t("emailUnverified")}
+                        </BadgeWithDot>
                     </dd>
                 </div>
                 <div>

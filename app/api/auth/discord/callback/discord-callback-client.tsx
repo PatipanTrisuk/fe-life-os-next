@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { LoadingIndicator } from "@/components/application/loading-indicator/loading-indicator";
 import { AuthShell } from "@/components/marketing/auth-shell";
-import { ApiError, authApi, getDiscordRedirectUri } from "@/lib/api";
+import { authApi, getDiscordRedirectUri, toApiError } from "@/lib/api";
 import { Link } from "@/i18n/navigation";
 import { useAuth } from "@/providers/auth-provider";
 
@@ -26,7 +26,7 @@ function DiscordCallbackContent() {
             return;
         }
         if (!code) {
-            setError("Missing Discord authorization code.");
+            setError(t("missingCode"));
             return;
         }
 
@@ -40,7 +40,7 @@ function DiscordCallbackContent() {
                 if (!cancelled) loginWithDiscordSession(res.data);
             } catch (err) {
                 if (!cancelled) {
-                    setError(err instanceof ApiError ? err.message : t("failedTitle"));
+                    setError(toApiError(err).message);
                 }
             }
         })();

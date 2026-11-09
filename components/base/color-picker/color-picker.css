@@ -1,0 +1,10 @@
+/* Untitled UI–style color picker track backgrounds */
+
+.color-picker-alpha [role="presentation"],
+.color-picker-alpha .react-aria-SliderTrack {
+    background-color: transparent;
+    background-image:
+        linear-gradient(to right, transparent, var(--color, currentColor)),
+        repeating-conic-gradient(#e4e7ec 0% 25%, #fff 0% 50%);
+    background-size: auto, 8px 8px;
+}

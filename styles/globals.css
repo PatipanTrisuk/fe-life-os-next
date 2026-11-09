@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "./theme.css";
+@import "./color-themes.css";
 
 @plugin "tailwindcss-animate";
 @plugin "tailwindcss-react-aria-components";
@@ -9,13 +10,45 @@
 @custom-variant focus-input-within (&:has(input:focus));
 
 @utility scrollbar-hide {
+    /* For Webkit-based browsers (Chrome, Safari and Opera) */
     &::-webkit-scrollbar {
         display: none;
         -webkit-appearance: none;
     }
 
-    -ms-overflow-style: none;
-    scrollbar-width: none;
+    /* For IE, Edge and Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+}
+
+/* Thin rounded scrollbar aligned with Untitled UI neutrals. */
+@utility scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-fg-quaternary) transparent;
+
+    &::-webkit-scrollbar {
+        width: 0.375rem;
+        height: 0.375rem;
+    }
+
+    &::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background-color: var(--color-fg-quaternary);
+        border-radius: 9999px;
+        border: 2px solid transparent;
+        background-clip: content-box;
+    }
+
+    &::-webkit-scrollbar-thumb:hover {
+        background-color: var(--color-fg-quaternary_hover);
+    }
+
+    &::-webkit-scrollbar-corner {
+        background: transparent;
+    }
 }
 
 @utility transition-inherit-all {
@@ -33,6 +66,35 @@ body {
     font-variant-ligatures: contextual;
     -webkit-font-kerning: normal;
     font-kerning: normal;
+}
+
+html {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-fg-quaternary) transparent;
+}
+
+html::-webkit-scrollbar {
+    width: 0.5rem;
+    height: 0.5rem;
+}
+
+html::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+html::-webkit-scrollbar-thumb {
+    background-color: var(--color-fg-quaternary);
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+
+html::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-fg-quaternary_hover);
+}
+
+html::-webkit-scrollbar-corner {
+    background: transparent;
 }
 
 details summary::-webkit-details-marker {

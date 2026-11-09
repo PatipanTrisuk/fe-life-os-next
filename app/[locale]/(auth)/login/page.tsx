@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Mail01 } from "@untitledui/icons";
 import { AuthShell } from "@/components/marketing/auth-shell";
 import { LocaleSwitcher } from "@/components/base/locale-switcher/locale-switcher";
@@ -11,7 +11,8 @@ import { ThemeToggle } from "@/components/base/theme-toggle/theme-toggle";
 import { Button } from "@/components/base/buttons/button";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { Input } from "@/components/base/input/input";
-import { ApiError, getDiscordAuthorizeUrl } from "@/lib/api";
+import { authApi, getDiscordAuthorizeUrl, toApiError } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { createLoginSchema, type LoginInput } from "@/lib/schemas";
 import { getRememberedEmail, getRememberMe } from "@/lib/token-storage";
 import { Link, useRouter } from "@/i18n/navigation";
@@ -19,18 +20,20 @@ import { useAuth } from "@/providers/auth-provider";
 
 export default function LoginPage() {
     const router = useRouter();
+    const locale = useLocale();
     const t = useTranslations();
     const { login, isAuthenticated, isLoading: authLoading } = useAuth();
     const discordUrl = getDiscordAuthorizeUrl();
     const schema = useMemo(() => createLoginSchema(t), [t]);
+    const [needsVerification, setNeedsVerification] = useState(false);
+    const [resending, setResending] = useState(false);
 
     const {
         control,
         handleSubmit,
-        formState: { isSubmitting, errors },
-        setError,
-        clearErrors,
+        formState: { isSubmitting },
         reset,
+        getValues,
     } = useForm<LoginInput>({
         resolver: zodResolver(schema),
         mode: "onSubmit",
@@ -53,15 +56,31 @@ export default function LoginPage() {
     }, [authLoading, isAuthenticated, router]);
 
     const onSubmit = handleSubmit(async (values) => {
-        clearErrors("root");
+        setNeedsVerification(false);
         try {
             await login(values.email.trim(), values.password, { rememberMe: values.rememberMe });
         } catch (err) {
-            setError("root", {
-                message: err instanceof ApiError ? err.message : t("login.failed"),
-            });
+            const apiErr = toApiError(err);
+            if (apiErr.code === "auth.email_not_verified") {
+                setNeedsVerification(true);
+            }
+            notify.error(apiErr.message);
         }
     });
+
+    const onResend = async () => {
+        const email = getValues("email").trim();
+        if (!email) return;
+        setResending(true);
+        try {
+            const res = await authApi.resendVerification(email, locale);
+            notify.success(res.message);
+        } catch (err) {
+            notify.error(toApiError(err).message);
+        } finally {
+            setResending(false);
+        }
+    };
 
     return (
         <AuthShell
@@ -76,7 +95,7 @@ export default function LoginPage() {
                 </>
             }
         >
-            <div className="mb-5 flex items-center justify-end gap-2">
+            <div className="mb-5 flex h-10 items-center justify-end gap-2">
                 <LocaleSwitcher />
                 <ThemeToggle />
             </div>
@@ -95,7 +114,7 @@ export default function LoginPage() {
                             isRequired
                             label={t("login.email")}
                             type="email"
-                            placeholder={t("login.emailPlaceholder")}
+                            placeholder={t("common.enterData")}
                             icon={Mail01}
                             isInvalid={Boolean(fieldState.error)}
                             hint={fieldState.error?.message}
@@ -115,7 +134,7 @@ export default function LoginPage() {
                             isRequired
                             label={t("login.password")}
                             type="password"
-                            placeholder={t("login.passwordPlaceholder")}
+                            placeholder={t("common.enterData")}
                             isInvalid={Boolean(fieldState.error)}
                             hint={
                                 fieldState.error?.message ?? (
@@ -145,7 +164,19 @@ export default function LoginPage() {
                     )}
                 />
 
-                {errors.root?.message ? <p className="text-sm text-error-primary">{errors.root.message}</p> : null}
+                {needsVerification ? (
+                    <Button
+                        type="button"
+                        color="secondary"
+                        size="sm"
+                        className="w-full"
+                        isLoading={resending}
+                        isDisabled={resending}
+                        onPress={onResend}
+                    >
+                        {t("login.resendVerification")}
+                    </Button>
+                ) : null}
 
                 <Button type="submit" size="lg" className="w-full" isLoading={isSubmitting} isDisabled={isSubmitting}>
                     {t("login.submit")}

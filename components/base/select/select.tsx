@@ -2,6 +2,7 @@
 
 import type { FC, ReactNode, Ref, RefAttributes } from "react";
 import { isValidElement } from "react";
+import { useTranslations } from "next-intl";
 import { ChevronDown } from "@untitledui/icons";
 import type { SelectProps as AriaSelectProps } from "react-aria-components";
 import { Button as AriaButton, ListBox as AriaListBox, Select as AriaSelect, SelectValue as AriaSelectValue } from "react-aria-components";
@@ -106,7 +107,7 @@ const SelectValue = ({ isOpen, isFocused, isDisabled, size, placeholder, icon, r
 };
 
 const Select = ({
-    placeholder = "Select",
+    placeholder,
     icon,
     size = "md",
     children,
@@ -118,6 +119,9 @@ const Select = ({
     className,
     ...rest
 }: SelectProps) => {
+    const t = useTranslations("common");
+    const resolvedPlaceholder = placeholder ?? t("enterData");
+
     return (
         <SelectContext.Provider value={{ size }}>
             <AriaSelect {...rest} className={(state) => cx("flex flex-col gap-1.5", typeof className === "function" ? className(state) : className)}>
@@ -129,7 +133,7 @@ const Select = ({
                             </Label>
                         )}
 
-                        <SelectValue {...state} {...{ size, placeholder }} icon={icon} />
+                        <SelectValue {...state} {...{ size, placeholder: resolvedPlaceholder }} icon={icon} />
 
                         <Popover size={size} className={rest.popoverClassName}>
                             <AriaListBox items={items} className="size-full outline-hidden">
