@@ -53,21 +53,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
     const items = useMemo(() => {
         const next: NavItemType[] = [
-            {
-                label: t("nav.lifeos"),
-                icon: Flag06,
-                items: [
-                    { label: t("nav.dashboard"), href: DASHBOARD_HREF, icon: BarChart01 },
-                    { label: t("nav.goals"), href: GOALS_HREF, icon: Flag06 },
-                    { label: t("nav.habits"), href: HABITS_HREF, icon: CheckCircle },
-                    { label: t("nav.planner"), href: PLANNER_HREF, icon: Calendar },
-                    { label: t("nav.calendar"), href: CALENDAR_HREF, icon: CalendarDate },
-                    { label: t("nav.notes"), href: NOTES_HREF, icon: File06 },
-                    { label: t("nav.finance"), href: FINANCE_HREF, icon: CoinsStacked01 },
-                    { label: t("nav.reminders"), href: REMINDERS_HREF, icon: Bell01 },
-                    { label: t("nav.analytics"), href: ANALYTICS_HREF, icon: LineChartUp01 },
-                ],
-            },
+            { label: t("nav.dashboard"), href: DASHBOARD_HREF, icon: BarChart01 },
+            { label: t("nav.goals"), href: GOALS_HREF, icon: Flag06 },
+            { label: t("nav.habits"), href: HABITS_HREF, icon: CheckCircle },
+            { label: t("nav.planner"), href: PLANNER_HREF, icon: Calendar },
+            { label: t("nav.calendar"), href: CALENDAR_HREF, icon: CalendarDate },
+            { label: t("nav.notes"), href: NOTES_HREF, icon: File06 },
+            { label: t("nav.finance"), href: FINANCE_HREF, icon: CoinsStacked01 },
+            { label: t("nav.reminders"), href: REMINDERS_HREF, icon: Bell01 },
+            { label: t("nav.analytics"), href: ANALYTICS_HREF, icon: LineChartUp01 },
         ];
 
         if (canManage) {
