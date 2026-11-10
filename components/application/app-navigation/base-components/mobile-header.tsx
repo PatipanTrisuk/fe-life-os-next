@@ -9,7 +9,7 @@ import {
     Modal as AriaModal,
     ModalOverlay as AriaModalOverlay,
 } from "react-aria-components";
-import { UntitledLogo } from "@/components/foundations/logo/untitledui-logo";
+import { LifePlusLogo } from "@/components/foundations/logo/life-plus-logo";
 import { cx } from "@/utils/cx";
 
 export const MobileNavigationHeader = ({
@@ -19,7 +19,7 @@ export const MobileNavigationHeader = ({
     return (
         <AriaDialogTrigger>
             <header className="flex h-14 items-center justify-between border-b border-secondary bg-primary p-3 pl-4 lg:hidden">
-                {logo ?? <UntitledLogo className="h-6" />}
+                {logo ?? <LifePlusLogo className="h-6" />}
 
                 <AriaButton
                     aria-label="Expand navigation menu"

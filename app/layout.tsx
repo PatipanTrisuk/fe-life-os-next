@@ -23,8 +23,8 @@ const prompt = Prompt({
 export const instant = false;
 
 export const metadata: Metadata = {
-    title: "Auth App",
-    description: "Authentication frontend for go-auth-backend",
+    title: "LIFE+",
+    description: "Plan your day. Shape your life with LIFE+.",
 };
 
 export const viewport: Viewport = {

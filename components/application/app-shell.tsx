@@ -24,6 +24,7 @@ import { AppBreadcrumbs } from "@/components/application/breadcrumbs/app-breadcr
 import { NotificationsPopover } from "@/components/application/notifications/notifications-popover";
 import { LocaleSwitcher } from "@/components/base/locale-switcher/locale-switcher";
 import { ThemeToggle } from "@/components/base/theme-toggle/theme-toggle";
+import { LifePlusLogo } from "@/components/foundations/logo/life-plus-logo";
 import { Link, usePathname } from "@/i18n/navigation";
 import { useAuth } from "@/providers/auth-provider";
 
@@ -90,8 +91,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }, [canManage, canReadRoles, canReadUsers, t]);
 
     const brand = (
-        <Link href={PROFILE_HREF} className="text-lg font-semibold tracking-tight text-primary">
-            {t("app.name")}
+        <Link href={PROFILE_HREF} aria-label={t("app.name")} className="inline-flex items-center">
+            <LifePlusLogo className="h-7" />
         </Link>
     );
 

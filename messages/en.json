@@ -1,13 +1,13 @@
 {
   "app": {
-    "name": "Auth App",
+    "name": "LIFE+",
     "loading": "Loading"
   },
   "nav": {
     "profile": "Profile",
     "devices": "Devices",
     "notifications": "Notifications",
-    "lifeos": "LifeOS",
+    "lifeos": "LIFE+",
     "dashboard": "Dashboard",
     "goals": "Goals",
     "habits": "Habits",
@@ -111,7 +111,7 @@
   },
   "home": {
     "redirecting": "Loading",
-    "brand": "LifeOS",
+    "brand": "LIFE+",
     "navLogin": "Log in",
     "navGetStarted": "Get started",
     "heroTitle": "Plan your day. Shape your life.",
@@ -120,7 +120,7 @@
     "ctaSecondary": "Log in",
     "featuresEyebrow": "Your life operating system",
     "featuresTitle": "Eight tools that stay in sync",
-    "featuresSubtitle": "From today's tasks to long-term progress, money, and memories—LifeOS turns intention into a rhythm you can see.",
+    "featuresSubtitle": "From today's tasks to long-term progress, money, and memories—LIFE+ turns intention into a rhythm you can see.",
     "featurePlannerTitle": "Daily Planner",
     "featurePlannerDescription": "Map the day with focused tasks, priorities, and a clear finish line before the evening starts.",
     "featureGoalsTitle": "Goal Management",
@@ -130,8 +130,8 @@
     "featureAnalyticsTitle": "Life Analytics",
     "featureAnalyticsDescription": "See patterns across planner, goals, and habits so you improve based on evidence—not guesswork.",
     "finalCtaTitle": "Start building better days",
-    "finalCtaSubtitle": "Create an account and open LifeOS in minutes.",
-    "footerBrand": "LifeOS",
+    "finalCtaSubtitle": "Create an account and open LIFE+ in minutes.",
+    "footerBrand": "LIFE+",
     "featureCalendarTitle": "Calendar",
     "featureCalendarDescription": "See your month at a glance, schedule events, and keep every appointment in one place.",
     "featureNotesTitle": "Notes & Journal",
@@ -142,7 +142,7 @@
     "featureRemindersDescription": "Set due times and get notified when something needs your attention—then mark it done.",
     "pricingEyebrow": "Plans",
     "pricingTitle": "Start free. Go Pro when you outgrow it.",
-    "pricingSubtitle": "Free covers everyday planning with sensible caps. Pro removes every limit so LifeOS can grow with you.",
+    "pricingSubtitle": "Free covers everyday planning with sensible caps. Pro removes every limit so LIFE+ can grow with you.",
     "pricingCta": "Start with Free",
     "pricingFeatureColumn": "Feature",
     "pricingFreeName": "Free",
@@ -159,7 +159,7 @@
   },
   "seriesMockup": {
     "brand": "daisuki series+",
-    "backHome": "Back to Auth App",
+    "backHome": "Back to LIFE+",
     "menu": "Menu",
     "eyebrow": "Series picks",
     "title": "แนะนำซีรีย์",

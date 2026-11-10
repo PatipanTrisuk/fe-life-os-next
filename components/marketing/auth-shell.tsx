@@ -2,7 +2,9 @@
 
 import type { PropsWithChildren, ReactNode } from "react";
 import { useTranslations } from "next-intl";
+import { LifePlusLogo } from "@/components/foundations/logo/life-plus-logo";
 import { Grid } from "@/components/shared-assets/background-patterns/grid";
+import { Link } from "@/i18n/navigation";
 
 type AuthShellProps = PropsWithChildren<{
     title: string;
@@ -21,8 +23,10 @@ export function AuthShell({ title, description, footer, children }: AuthShellPro
 
             <div className="relative w-full max-w-md">
                 <div className="mb-8 text-center">
-                    <p className="text-sm font-semibold text-brand-secondary">{t("name")}</p>
-                    <h1 className="mt-2 text-display-xs font-semibold text-primary">{title}</h1>
+                    <Link href="/" aria-label={t("name")} className="inline-flex justify-center">
+                        <LifePlusLogo className="mx-auto h-8" />
+                    </Link>
+                    <h1 className="mt-4 text-display-xs font-semibold text-primary">{title}</h1>
                     {description ? <p className="mt-2 text-md text-tertiary">{description}</p> : null}
                 </div>
 

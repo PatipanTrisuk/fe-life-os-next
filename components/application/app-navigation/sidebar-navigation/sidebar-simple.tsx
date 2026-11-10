@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { SearchLg } from "@untitledui/icons";
 import { Input } from "@/components/base/input/input";
-import { UntitledLogo } from "@/components/foundations/logo/untitledui-logo";
+import { LifePlusLogo } from "@/components/foundations/logo/life-plus-logo";
 import { cx } from "@/utils/cx";
 import { MobileNavigationHeader } from "../base-components/mobile-header";
 import { NavAccountCard } from "../base-components/nav-account-card";
@@ -46,7 +46,7 @@ export const SidebarNavigationSimple = ({
     hideBorder = false,
     className,
 }: SidebarNavigationProps) => {
-    const brand = logo ?? <UntitledLogo className="h-6" />;
+    const brand = logo ?? <LifePlusLogo className="h-6" />;
     const MAIN_SIDEBAR_WIDTH = 280;
 
     const renderContent = (key: string) => (

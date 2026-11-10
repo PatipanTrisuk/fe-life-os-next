@@ -1,13 +1,13 @@
 {
   "app": {
-    "name": "Auth App",
+    "name": "LIFE+",
     "loading": "กำลังโหลด"
   },
   "nav": {
     "profile": "โปรไฟล์",
     "devices": "อุปกรณ์",
     "notifications": "การแจ้งเตือน",
-    "lifeos": "LifeOS",
+    "lifeos": "LIFE+",
     "dashboard": "แดชบอร์ด",
     "goals": "เป้าหมาย",
     "habits": "นิสัย",
@@ -111,7 +111,7 @@
   },
   "home": {
     "redirecting": "กำลังโหลด",
-    "brand": "LifeOS",
+    "brand": "LIFE+",
     "navLogin": "เข้าสู่ระบบ",
     "navGetStarted": "เริ่มต้นใช้งาน",
     "heroTitle": "วางแผนแต่ละวัน สร้างชีวิตที่ชัดขึ้น",
@@ -120,7 +120,7 @@
     "ctaSecondary": "เข้าสู่ระบบ",
     "featuresEyebrow": "ระบบปฏิบัติการของชีวิตคุณ",
     "featuresTitle": "แปดเครื่องมือที่ทำงานร่วมกัน",
-    "featuresSubtitle": "จากงานวันนี้ไปถึงเป้าหมายระยะยาว เงิน และความทรงจำ—LifeOS เปลี่ยนความตั้งใจเป็นจังหวะที่วัดผลได้",
+    "featuresSubtitle": "จากงานวันนี้ไปถึงเป้าหมายระยะยาว เงิน และความทรงจำ—LIFE+ เปลี่ยนความตั้งใจเป็นจังหวะที่วัดผลได้",
     "featurePlannerTitle": "Daily Planner",
     "featurePlannerDescription": "จัดลำดับงานในแต่ละวัน ตั้งความสำคัญ และรู้ชัดว่าวันนี้จบตรงไหนก่อนค่ำ",
     "featureGoalsTitle": "Goal Management",
@@ -130,8 +130,8 @@
     "featureAnalyticsTitle": "Life Analytics",
     "featureAnalyticsDescription": "มองเห็นแพทเทิร์นจาก planner, goals และ habits เพื่อปรับพฤติกรรมจากข้อมูล ไม่ใช่การเดา",
     "finalCtaTitle": "เริ่มสร้างวันที่ดีขึ้นวันนี้",
-    "finalCtaSubtitle": "สมัครบัญชีแล้วเปิดใช้ LifeOS ได้ในไม่กี่นาที",
-    "footerBrand": "LifeOS",
+    "finalCtaSubtitle": "สมัครบัญชีแล้วเปิดใช้ LIFE+ ได้ในไม่กี่นาที",
+    "footerBrand": "LIFE+",
     "featureCalendarTitle": "ปฏิทิน",
     "featureCalendarDescription": "ดูภาพรวมทั้งเดือน จัดตารางกิจกรรม และเก็บนัดหมายทั้งหมดไว้ที่เดียว",
     "featureNotesTitle": "บันทึกและไดอารี่",
@@ -142,7 +142,7 @@
     "featureRemindersDescription": "ตั้งเวลากำหนดและรับการแจ้งเตือนเมื่อถึงเวลา แล้วทำเครื่องหมายว่าเสร็จ",
     "pricingEyebrow": "แพ็กเกจ",
     "pricingTitle": "เริ่มฟรี แล้วอัปเกรดเมื่อพร้อม",
-    "pricingSubtitle": "Free ครอบคลุมการวางแผนประจำวันด้วยขีดจำกัดที่เหมาะสม ส่วน Pro ปลดทุกขีดจำกัดเพื่อให้ LifeOS เติบโตไปกับคุณ",
+    "pricingSubtitle": "Free ครอบคลุมการวางแผนประจำวันด้วยขีดจำกัดที่เหมาะสม ส่วน Pro ปลดทุกขีดจำกัดเพื่อให้ LIFE+ เติบโตไปกับคุณ",
     "pricingCta": "เริ่มต้นด้วย Free",
     "pricingFeatureColumn": "ฟีเจอร์",
     "pricingFreeName": "Free",
@@ -159,7 +159,7 @@
   },
   "seriesMockup": {
     "brand": "daisuki series+",
-    "backHome": "กลับไป Auth App",
+    "backHome": "กลับไป LIFE+",
     "menu": "เมนู",
     "eyebrow": "คัดสรรซีรีย์",
     "title": "แนะนำซีรีย์",

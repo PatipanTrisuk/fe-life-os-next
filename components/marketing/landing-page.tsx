@@ -16,6 +16,7 @@ import {
     Flag06,
 } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
+import { LifePlusLogo } from "@/components/foundations/logo/life-plus-logo";
 import { LandingNav } from "@/components/marketing/landing-nav";
 import { LifeOsHeroVisual } from "@/components/marketing/lifeos-hero-visual";
 import { Grid } from "@/components/shared-assets/background-patterns/grid";
@@ -133,7 +134,7 @@ export function LandingPage() {
     return (
         <div ref={rootRef} className="min-h-dvh bg-primary text-primary">
             <div data-animate="nav">
-                <LandingNav brand={t("brand")} />
+                <LandingNav />
             </div>
 
             <section data-section="hero" className="relative isolate min-h-[calc(100dvh-4rem)] overflow-hidden">
@@ -157,7 +158,8 @@ export function LandingPage() {
                         data-animate="hero-brand"
                         className="text-display-sm font-semibold tracking-tight text-primary sm:text-display-md"
                     >
-                        {t("brand")}
+                        LIFE
+                        <span className="text-fg-brand-primary">+</span>
                     </p>
                     <h1
                         data-animate="hero-title"
@@ -297,7 +299,7 @@ export function LandingPage() {
 
             <footer className="border-t border-secondary bg-secondary">
                 <div className="mx-auto flex w-full max-w-6xl items-center px-4 py-8 sm:px-6">
-                    <p className="text-sm font-semibold text-tertiary">{t("footerBrand")}</p>
+                    <LifePlusLogo className="h-6 opacity-80" aria-label={t("footerBrand")} />
                 </div>
             </footer>
         </div>
