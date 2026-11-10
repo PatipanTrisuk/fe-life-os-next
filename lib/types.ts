@@ -15,6 +15,7 @@ export interface User {
     auth_provider: AuthProvider;
     discord_id?: string;
     google_id?: string;
+    avatar_url?: string | null;
     email_verified_at?: string | null;
     deleted_at?: string | null;
     created_at: string;

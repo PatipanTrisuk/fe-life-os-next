@@ -19,6 +19,7 @@ export default function ProfilePage() {
                 size="lg"
                 title={user.username}
                 subtitle={user.email}
+                src={user.avatar_url || undefined}
                 initials={user.username.slice(0, 2).toUpperCase()}
             />
 

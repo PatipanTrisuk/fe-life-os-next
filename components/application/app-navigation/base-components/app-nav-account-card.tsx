@@ -77,6 +77,7 @@ export function AppNavAccountCard() {
                     initials={initials}
                     title={user.username}
                     subtitle={user.email}
+                    src={user.avatar_url || undefined}
                     status="online"
                 />
                 <div className="mt-2 pl-12">

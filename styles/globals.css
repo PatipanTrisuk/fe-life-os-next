@@ -60,12 +60,23 @@
 html,
 body {
     font-family: var(--font-body);
+    font-weight: var(--font-weight-normal);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     -webkit-font-variant-ligatures: contextual;
     font-variant-ligatures: contextual;
     -webkit-font-kerning: normal;
     font-kerning: normal;
+}
+
+/* Sub text (muted colors) defaults to light; :where keeps explicit font-* utilities in control */
+@layer utilities {
+    :where(.text-tertiary),
+    :where(.text-quaternary),
+    :where(.text-tertiary_hover),
+    :where(.text-placeholder) {
+        font-weight: var(--font-weight-light);
+    }
 }
 
 html {
