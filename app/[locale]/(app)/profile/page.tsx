@@ -74,6 +74,12 @@ export default function ProfilePage() {
                         <dd className="mt-1 text-sm font-medium text-primary">{user.discord_id}</dd>
                     </div>
                 ) : null}
+                {user.google_id ? (
+                    <div>
+                        <dt className="text-sm text-tertiary">{t("googleId")}</dt>
+                        <dd className="mt-1 break-all text-sm font-medium text-primary">{user.google_id}</dd>
+                    </div>
+                ) : null}
                 <div>
                     <dt className="text-sm text-tertiary">{t("created")}</dt>
                     <dd className="mt-1 text-sm font-medium text-primary">

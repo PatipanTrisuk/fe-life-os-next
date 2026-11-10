@@ -204,6 +204,8 @@
     "rememberMe": "จดจำฉันไว้",
     "rememberMeHint": "ให้คงสถานะเข้าสู่ระบบไว้บนอุปกรณ์นี้แม้ปิดเบราว์เซอร์",
     "submit": "เข้าสู่ระบบ",
+    "google": "ดำเนินการต่อด้วย Google",
+    "googleMissing": "ตั้งค่า NEXT_PUBLIC_GOOGLE_CLIENT_ID เพื่อเปิดใช้ Google",
     "discord": "ดำเนินการต่อด้วย Discord",
     "discordMissing": "ตั้งค่า NEXT_PUBLIC_DISCORD_CLIENT_ID เพื่อเปิดใช้ Discord",
     "noAccount": "ยังไม่มีบัญชี?",
@@ -277,6 +279,12 @@
     "missingCode": "ไม่พบรหัสยืนยันจาก Discord",
     "tryAgain": "คุณสามารถลองใหม่จากหน้าเข้าสู่ระบบ"
   },
+  "google": {
+    "signingIn": "กำลังเข้าสู่ระบบด้วย Google",
+    "failedTitle": "เข้าสู่ระบบ Google ไม่สำเร็จ",
+    "missingCode": "ไม่พบรหัสยืนยันจาก Google",
+    "tryAgain": "คุณสามารถลองใหม่จากหน้าเข้าสู่ระบบ"
+  },
   "profile": {
     "title": "โปรไฟล์",
     "subtitle": "ข้อมูลบัญชีและประวัติอุปกรณ์ของคุณ",
@@ -289,6 +297,7 @@
     "authProvider": "ผู้ให้บริการยืนยันตัวตน",
     "userId": "รหัสผู้ใช้",
     "discordId": "Discord ID",
+    "googleId": "Google ID",
     "emailVerified": "ยืนยันอีเมลแล้ว",
     "emailUnverified": "ยังไม่ยืนยันอีเมล",
     "created": "สร้างเมื่อ",
@@ -303,7 +312,7 @@
     "confirmPassword": "ยืนยันรหัสผ่านใหม่",
     "changePassword": "อัปเดตรหัสผ่าน",
     "passwordChanged": "อัปเดตรหัสผ่านแล้ว กรุณาเข้าสู่ระบบใหม่บนอุปกรณ์อื่น",
-    "passwordNotSetHint": "บัญชีนี้ใช้ Discord และยังไม่มีรหัสผ่านแบบ local",
+    "passwordNotSetHint": "บัญชีนี้เข้าสู่ระบบด้วยโซเชียล และยังไม่มีรหัสผ่านแบบ local",
     "appearanceTitle": "ธีมของระบบ",
     "appearanceDescription": "เลือกชุดสีและโหมดการแสดงผลของแอปพลิเคชัน"
   },
@@ -443,6 +452,7 @@
     "roleAdmin": "แอดมิน",
     "providerLocal": "Local",
     "providerDiscord": "Discord",
+    "providerGoogle": "Google",
     "updated": "แก้ไขเมื่อ",
     "addUser": "เพิ่มผู้ใช้",
     "editUser": "แก้ไขผู้ใช้",

@@ -41,6 +41,7 @@ type AuthContextValue = {
     login: (email: string, password: string, options?: LoginOptions) => Promise<void>;
     register: (username: string, email: string, password: string) => Promise<void>;
     loginWithDiscordSession: (session: AuthSession, options?: LoginOptions) => void;
+    loginWithOAuthSession: (session: AuthSession, options?: LoginOptions) => void;
     logout: () => Promise<void>;
     refreshProfile: () => Promise<User | null>;
     setProfile: (user: User) => void;
@@ -148,13 +149,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
         [registerMutation],
     );
 
-    const loginWithDiscordSession = useCallback(
+    const loginWithOAuthSession = useCallback(
         (session: AuthSession, options?: LoginOptions) => {
             applySession(session, { rememberMe: options?.rememberMe ?? true });
             router.replace("/profile");
         },
         [applySession, router],
     );
+
+    const loginWithDiscordSession = loginWithOAuthSession;
 
     const logout = useCallback(async () => {
         await logoutMutation.mutateAsync();
@@ -196,6 +199,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
             login,
             register,
             loginWithDiscordSession,
+            loginWithOAuthSession,
             logout,
             refreshProfile,
             setProfile,
@@ -209,6 +213,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
             login,
             register,
             loginWithDiscordSession,
+            loginWithOAuthSession,
             logout,
             refreshProfile,
             setProfile,

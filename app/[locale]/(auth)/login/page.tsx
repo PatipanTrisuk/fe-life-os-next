@@ -9,9 +9,10 @@ import { AuthShell } from "@/components/marketing/auth-shell";
 import { LocaleSwitcher } from "@/components/base/locale-switcher/locale-switcher";
 import { ThemeToggle } from "@/components/base/theme-toggle/theme-toggle";
 import { Button } from "@/components/base/buttons/button";
+import { SocialButton } from "@/components/base/buttons/social-button";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { Input } from "@/components/base/input/input";
-import { authApi, getDiscordAuthorizeUrl, toApiError } from "@/lib/api";
+import { authApi, getDiscordAuthorizeUrl, getGoogleAuthorizeUrl, toApiError } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { createLoginSchema, type LoginInput } from "@/lib/schemas";
 import { getRememberedEmail, getRememberMe } from "@/lib/token-storage";
@@ -24,6 +25,7 @@ export default function LoginPage() {
     const t = useTranslations();
     const { login, isAuthenticated, isLoading: authLoading } = useAuth();
     const discordUrl = getDiscordAuthorizeUrl();
+    const googleUrl = getGoogleAuthorizeUrl();
     const schema = useMemo(() => createLoginSchema(t), [t]);
     const [needsVerification, setNeedsVerification] = useState(false);
     const [resending, setResending] = useState(false);
@@ -189,18 +191,34 @@ export default function LoginPage() {
                 <div className="h-px flex-1 bg-border-secondary" />
             </div>
 
-            <Button
-                size="lg"
-                color="secondary"
-                className="w-full"
-                isDisabled={!discordUrl}
-                onPress={() => {
-                    if (discordUrl) window.location.href = discordUrl;
-                }}
-            >
-                {t("login.discord")}
-            </Button>
-            {!discordUrl ? <p className="mt-2 text-center text-xs text-tertiary">{t("login.discordMissing")}</p> : null}
+            <div className="flex flex-col gap-3">
+                <SocialButton
+                    social="google"
+                    theme="color"
+                    size="lg"
+                    className="w-full"
+                    isDisabled={!googleUrl}
+                    onPress={() => {
+                        if (googleUrl) window.location.href = googleUrl;
+                    }}
+                >
+                    {t("login.google")}
+                </SocialButton>
+                {!googleUrl ? <p className="text-center text-xs text-tertiary">{t("login.googleMissing")}</p> : null}
+
+                <Button
+                    size="lg"
+                    color="secondary"
+                    className="w-full"
+                    isDisabled={!discordUrl}
+                    onPress={() => {
+                        if (discordUrl) window.location.href = discordUrl;
+                    }}
+                >
+                    {t("login.discord")}
+                </Button>
+                {!discordUrl ? <p className="text-center text-xs text-tertiary">{t("login.discordMissing")}</p> : null}
+            </div>
         </AuthShell>
     );
 }

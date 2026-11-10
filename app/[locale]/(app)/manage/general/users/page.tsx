@@ -694,6 +694,7 @@ export default function UserAccountsPage() {
                                                     { id: "__all__", label: t("filterAll") },
                                                     { id: "local", label: t("providerLocal") },
                                                     { id: "discord", label: t("providerDiscord") },
+                                                    { id: "google", label: t("providerGoogle") },
                                                 ]}
                                             >
                                                 {(item) => <Select.Item id={item.id} label={item.label} />}

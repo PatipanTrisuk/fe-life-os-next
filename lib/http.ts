@@ -142,6 +142,7 @@ function shouldSkipErrorToast(config?: RetryConfig) {
         || url.includes("/api/auth/verify-email")
         || url.includes("/api/auth/resend-verification")
         || url.includes("/api/auth/discord")
+        || url.includes("/api/auth/google")
     );
 }
 
@@ -159,7 +160,8 @@ http.interceptors.response.use(
                 || config.url?.includes("/api/auth/reset-password")
                 || config.url?.includes("/api/auth/verify-email")
                 || config.url?.includes("/api/auth/resend-verification")
-                || config.url?.includes("/api/auth/discord");
+                || config.url?.includes("/api/auth/discord")
+                || config.url?.includes("/api/auth/google");
 
             if (!isAuthRoute && getRefreshToken()) {
                 config._retry = true;

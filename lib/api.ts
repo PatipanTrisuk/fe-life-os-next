@@ -76,6 +76,14 @@ export const authApi = {
         return data;
     },
 
+    async google(payload: { code: string; redirectUri: string }) {
+        const { data } = await http.post<{ status: string; data: AuthSession }>("/api/auth/google", {
+            ...payload,
+            device: getDevicePayload(),
+        });
+        return data;
+    },
+
     async forgotPassword(email: string, locale?: string) {
         const { data } = await http.post<{ status: string; message: string }>(
             "/api/auth/forgot-password",
@@ -863,4 +871,25 @@ export function getDiscordAuthorizeUrl() {
         scope: "identify email",
     });
     return `https://discord.com/api/oauth2/authorize?${params.toString()}`;
+}
+
+export function getGoogleRedirectUri() {
+    if (typeof window === "undefined") {
+        return process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI ?? "http://localhost:3000/api/auth/google/callback";
+    }
+    return `${window.location.origin}/api/auth/google/callback`;
+}
+
+export function getGoogleAuthorizeUrl() {
+    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+    if (!clientId) return null;
+    const params = new URLSearchParams({
+        client_id: clientId,
+        response_type: "code",
+        redirect_uri: getGoogleRedirectUri(),
+        scope: "openid email profile",
+        access_type: "online",
+        prompt: "select_account",
+    });
+    return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
 }

@@ -204,6 +204,8 @@
     "rememberMe": "Remember me",
     "rememberMeHint": "Stay signed in on this device after you close the browser.",
     "submit": "Log in",
+    "google": "Continue with Google",
+    "googleMissing": "Set NEXT_PUBLIC_GOOGLE_CLIENT_ID to enable Google login.",
     "discord": "Continue with Discord",
     "discordMissing": "Set NEXT_PUBLIC_DISCORD_CLIENT_ID to enable Discord login.",
     "noAccount": "Don't have an account?",
@@ -277,6 +279,12 @@
     "missingCode": "Missing Discord authorization code.",
     "tryAgain": "You can try again from the login page."
   },
+  "google": {
+    "signingIn": "Signing in with Google",
+    "failedTitle": "Google login failed",
+    "missingCode": "Missing Google authorization code.",
+    "tryAgain": "You can try again from the login page."
+  },
   "profile": {
     "title": "Profile",
     "subtitle": "Your account details and device history",
@@ -289,6 +297,7 @@
     "authProvider": "Auth provider",
     "userId": "User ID",
     "discordId": "Discord ID",
+    "googleId": "Google ID",
     "emailVerified": "Email verified",
     "emailUnverified": "Email not verified",
     "created": "Created",
@@ -303,7 +312,7 @@
     "confirmPassword": "Confirm new password",
     "changePassword": "Update password",
     "passwordChanged": "Password updated. Sign in again on other devices.",
-    "passwordNotSetHint": "This account uses Discord and has no local password.",
+    "passwordNotSetHint": "This account uses social login and has no local password.",
     "appearanceTitle": "System theme",
     "appearanceDescription": "Choose the app color palette and light/dark mode"
   },
@@ -443,6 +452,7 @@
     "roleAdmin": "Admin",
     "providerLocal": "Local",
     "providerDiscord": "Discord",
+    "providerGoogle": "Google",
     "updated": "Updated",
     "addUser": "Add user",
     "editUser": "Edit user",

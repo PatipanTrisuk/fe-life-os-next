@@ -1,6 +1,6 @@
 export type UserRole = string;
 
-export type AuthProvider = "local" | "discord";
+export type AuthProvider = "local" | "discord" | "google";
 
 export type BillingPlanCode = "free" | "pro";
 
@@ -14,6 +14,7 @@ export interface User {
     plan_code?: BillingPlanCode | string;
     auth_provider: AuthProvider;
     discord_id?: string;
+    google_id?: string;
     email_verified_at?: string | null;
     deleted_at?: string | null;
     created_at: string;
