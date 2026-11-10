@@ -9,6 +9,7 @@ import { QueryProvider } from "@/providers/query-provider";
 import { ColorThemeProvider } from "@/providers/color-theme-provider";
 import { ThemeProvider } from "@/providers/theme-provider";
 import { COLOR_THEME_BOOT_SCRIPT } from "@/lib/color-theme";
+import { SITE_NAME, getSiteUrl } from "@/lib/seo";
 import enMessages from "@/messages/en.json";
 import "@/styles/globals.css";
 
@@ -23,8 +24,26 @@ const prompt = Prompt({
 export const instant = false;
 
 export const metadata: Metadata = {
-    title: "LIFE+",
-    description: "Plan your day. Shape your life with LIFE+.",
+    metadataBase: new URL(getSiteUrl()),
+    title: {
+        default: SITE_NAME,
+        template: `%s | ${SITE_NAME}`,
+    },
+    description: "LIFE+ helps you plan each day with goals, habits, calendar, notes, finance, and reminders.",
+    applicationName: SITE_NAME,
+    authors: [{ name: SITE_NAME }],
+    creator: SITE_NAME,
+    openGraph: {
+        type: "website",
+        siteName: SITE_NAME,
+        title: SITE_NAME,
+        description: "Plan your day. Shape your life with LIFE+.",
+    },
+    twitter: {
+        card: "summary_large_image",
+        title: SITE_NAME,
+        description: "Plan your day. Shape your life with LIFE+.",
+    },
 };
 
 export const viewport: Viewport = {

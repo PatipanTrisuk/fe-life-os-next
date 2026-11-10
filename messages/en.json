@@ -3,6 +3,20 @@
     "name": "LIFE+",
     "loading": "Loading"
   },
+  "seo": {
+    "titleTemplate": "%s | LIFE+",
+    "defaultTitle": "LIFE+ | Plan your day. Shape your life.",
+    "defaultDescription": "LIFE+ helps you plan each day with goals, habits, calendar, notes, finance, and reminders in one calm system.",
+    "keywords": "LIFE+, life planner, habit tracker, goal tracker, daily planner, productivity app",
+    "homeTitle": "LIFE+ | Plan your day. Shape your life.",
+    "homeDescription": "Planning, goals, habits, calendar, notes, finance, and reminders in one system that keeps progress visible.",
+    "loginTitle": "Log in to LIFE+",
+    "loginDescription": "Sign in to LIFE+ to continue planning your day, goals, and habits.",
+    "registerTitle": "Create your LIFE+ account",
+    "registerDescription": "Create a free LIFE+ account and start building better days with goals, habits, and daily planning.",
+    "seriesTitle": "Series picks | LIFE+",
+    "seriesDescription": "Browse curated series recommendations in the LIFE+ mockup gallery."
+  },
   "nav": {
     "profile": "Profile",
     "devices": "Devices",

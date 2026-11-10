@@ -19,7 +19,8 @@ export default function HomePage() {
         }
     }, [isAuthenticated, isLoading, router]);
 
-    if (isLoading || isAuthenticated) {
+    // Keep the marketing page visible while auth resolves so crawlers get real content.
+    if (isAuthenticated) {
         return (
             <div className="flex min-h-dvh items-center justify-center bg-primary">
                 <LoadingIndicator size="md" label={t("redirecting")} />
